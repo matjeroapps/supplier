@@ -1,0 +1,52 @@
+# Matjero Supplier
+
+Supplier Platform for Matjero: the `supplier-api` Go service and the `supplier-web`
+React frontend.
+
+This repository depends on [`matjeroapps/core`](https://github.com/matjeroapps/core)
+for shared domain logic (commerce, markets), platform packages (auth, config,
+database, httpx, i18n, money, observability, outbox/inbox), the actor router, and the
+shared OpenAPI primitives. It owns no database migrations — those stay centralized in
+`matjeroapps/core` `migrations/`.
+
+## Layout
+
+| Path | Purpose |
+| --- | --- |
+| `apps/supplier-api` | Supplier HTTP service entrypoint |
+| `internal/supplierapi` | Supplier route registration and supplier-only DTOs |
+| `internal/openapi` | Supplier OpenAPI document (code-first) |
+| `cmd/openapi-gen` | Regenerates `docs/api/supplier/openapi.json` |
+| `web/supplier` | Supplier frontend (`@commerce/supplier-web`) |
+| `docs/api/supplier` | Generated OpenAPI artifact, committed for drift detection |
+
+## Local Development
+
+```sh
+cp .env.example .env
+go build ./...
+go test ./...
+go run ./cmd/openapi-gen && git diff --exit-code -- docs/api
+npm install
+npm run lint
+npm run typecheck
+npm run test
+```
+
+Infrastructure (PostgreSQL, Redis, RabbitMQ, ZITADEL) is provided by the
+`docker-compose.yml` in `matjeroapps/core`.
+
+## Cross-repository dependency
+
+`go.mod` requires `github.com/matjeroapps/core` at a published version. Never
+commit a `replace` directive pointing at a local path.
+
+For side-by-side development, use a Go workspace file kept **outside** both
+repositories (for example in their shared parent directory):
+
+```sh
+go work init ./core ./supplier
+```
+
+`go.work` and `go.work.sum` are git-ignored so they can never be committed.
+
