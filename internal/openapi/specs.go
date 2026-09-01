@@ -5,8 +5,8 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 
-	"github.com/matjeroapps/core/pkg/commerce"
-	"github.com/matjeroapps/core/pkg/contracts"
+	"github.com/matjeroapps/supplier/internal/contracts"
+	"github.com/matjeroapps/supplier/internal/coreclient"
 	"github.com/matjeroapps/supplier/internal/supplierapi"
 )
 
@@ -15,8 +15,8 @@ func BuildSupplierSpec() (*openapi3.T, error) {
 		Title:         "Matjero Supplier API",
 		Description:   "OpenAPI contract for the Matjero Supplier API.",
 		Authenticated: true,
-		Tags:          openAPITags(),
-		Routes:        append(actorRoutes(true), supplierRoutes()...),
+		Tags:          CommonTags(),
+		Routes:        append(ActorRoutes(true), supplierRoutes()...),
 	})
 }
 
@@ -29,7 +29,7 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "Get the supplier profile",
 			Tags:        []string{"Suppliers"},
 			Auth:        true,
-			Responses:   authReadResponses("Supplier profile", supplierapi.SupplierProfileResponse{}),
+			Responses:   AuthReadResponses("Supplier profile", supplierapi.SupplierProfileResponse{}),
 		},
 		{
 			Method:      http.MethodPut,
@@ -39,7 +39,7 @@ func supplierRoutes() []RouteSpec {
 			Tags:        []string{"Suppliers"},
 			Auth:        true,
 			RequestBody: supplierapi.SupplierProfileUpdateRequest{},
-			Responses:   authOKResponses("Supplier profile updated", contracts.StatusResponse{}),
+			Responses:   AuthOKResponses("Supplier profile updated", contracts.StatusResponse{}),
 		},
 		{
 			Method:      http.MethodGet,
@@ -48,8 +48,8 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "List supplier markets",
 			Tags:        []string{"Markets"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{limitParam(), offsetParam()},
-			Responses:   listResponses[commerce.SupplierMarket]("Supplier market collection"),
+			Parameters:  []ParameterSpec{LimitParam(), OffsetParam()},
+			Responses:   ListResponses[coreclient.SupplierMarket]("Supplier market collection"),
 		},
 		{
 			Method:      http.MethodGet,
@@ -58,8 +58,8 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "List fulfillment locations",
 			Tags:        []string{"Fulfillment Locations"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{limitParam(), offsetParam()},
-			Responses:   listResponses[commerce.FulfillmentLocation]("Fulfillment location collection"),
+			Parameters:  []ParameterSpec{LimitParam(), OffsetParam()},
+			Responses:   ListResponses[coreclient.FulfillmentLocation]("Fulfillment location collection"),
 		},
 		{
 			Method:      http.MethodPost,
@@ -69,7 +69,7 @@ func supplierRoutes() []RouteSpec {
 			Tags:        []string{"Fulfillment Locations"},
 			Auth:        true,
 			RequestBody: supplierapi.SupplierLocationCreateRequest{},
-			Responses:   authCreatedResponses("Fulfillment location created", commerce.FulfillmentLocation{}),
+			Responses:   AuthCreatedResponses("Fulfillment location created", coreclient.FulfillmentLocation{}),
 		},
 		{
 			Method:      http.MethodGet,
@@ -78,8 +78,8 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "List supplier products",
 			Tags:        []string{"Catalog"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{limitParam(), offsetParam()},
-			Responses:   listResponses[commerce.SupplierProduct]("Supplier product collection"),
+			Parameters:  []ParameterSpec{LimitParam(), OffsetParam()},
+			Responses:   ListResponses[coreclient.SupplierProduct]("Supplier product collection"),
 		},
 		{
 			Method:      http.MethodPost,
@@ -89,7 +89,7 @@ func supplierRoutes() []RouteSpec {
 			Tags:        []string{"Catalog", "Categories", "Attributes", "Variants", "SKUs"},
 			Auth:        true,
 			RequestBody: supplierapi.SupplierProductCreateRequest{},
-			Responses:   authCreatedResponses("Supplier product created", supplierapi.ProductCreateResponse{}),
+			Responses:   AuthCreatedResponses("Supplier product created", supplierapi.ProductCreateResponse{}),
 		},
 		{
 			Method:      http.MethodPut,
@@ -98,9 +98,9 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "Update supplier product categories",
 			Tags:        []string{"Categories"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{pathStringParam("id", "Product identifier")},
+			Parameters:  []ParameterSpec{PathStringParam("id", "Product identifier")},
 			RequestBody: supplierapi.SupplierProductCategoriesRequest{},
-			Responses:   authOKResponses("Supplier product categories updated", supplierapi.SupplierProductCategoriesRequest{}),
+			Responses:   AuthOKResponses("Supplier product categories updated", supplierapi.SupplierProductCategoriesRequest{}),
 		},
 		{
 			Method:      http.MethodGet,
@@ -109,8 +109,8 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "List supplier offers",
 			Tags:        []string{"Supplier Offers"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{limitParam(), offsetParam()},
-			Responses:   listResponses[commerce.SupplierOffer]("Supplier offer collection"),
+			Parameters:  []ParameterSpec{LimitParam(), OffsetParam()},
+			Responses:   ListResponses[coreclient.SupplierOffer]("Supplier offer collection"),
 		},
 		{
 			Method:      http.MethodPost,
@@ -120,7 +120,7 @@ func supplierRoutes() []RouteSpec {
 			Tags:        []string{"Supplier Offers"},
 			Auth:        true,
 			RequestBody: supplierapi.SupplierOfferCreateRequest{},
-			Responses:   authCreatedResponses("Supplier offer created", commerce.SupplierOffer{}),
+			Responses:   AuthCreatedResponses("Supplier offer created", coreclient.SupplierOffer{}),
 		},
 		{
 			Method:      http.MethodGet,
@@ -129,8 +129,8 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "List inventory snapshots",
 			Tags:        []string{"Inventory"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{limitParam(), offsetParam()},
-			Responses:   listResponses[commerce.InventorySnapshot]("Inventory snapshot collection"),
+			Parameters:  []ParameterSpec{LimitParam(), OffsetParam()},
+			Responses:   ListResponses[coreclient.InventorySnapshot]("Inventory snapshot collection"),
 		},
 		{
 			Method:      http.MethodPost,
@@ -140,7 +140,7 @@ func supplierRoutes() []RouteSpec {
 			Tags:        []string{"Inventory"},
 			Auth:        true,
 			RequestBody: supplierapi.InventorySnapshotCreateRequest{},
-			Responses:   authCreatedResponses("Inventory snapshot created", commerce.InventorySnapshot{}),
+			Responses:   AuthCreatedResponses("Inventory snapshot created", coreclient.InventorySnapshot{}),
 		},
 		{
 			Method:      http.MethodPost,
@@ -149,9 +149,9 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "Adjust an inventory snapshot",
 			Tags:        []string{"Inventory", "Audit"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{pathStringParam("snapshot_id", "Inventory snapshot identifier")},
+			Parameters:  []ParameterSpec{PathStringParam("snapshot_id", "Inventory snapshot identifier")},
 			RequestBody: supplierapi.InventoryAdjustmentRequest{},
-			Responses:   authOKResponses("Inventory adjusted", supplierapi.InventoryAdjustmentResponse{}),
+			Responses:   AuthOKResponses("Inventory adjusted", supplierapi.InventoryAdjustmentResponse{}),
 		},
 		{
 			Method:      http.MethodGet,
@@ -160,8 +160,8 @@ func supplierRoutes() []RouteSpec {
 			Summary:     "List inventory movements",
 			Tags:        []string{"Inventory", "Audit"},
 			Auth:        true,
-			Parameters:  []ParameterSpec{pathStringParam("snapshot_id", "Inventory snapshot identifier"), limitParam(), offsetParam()},
-			Responses:   listResponses[commerce.InventoryMovement]("Inventory movement collection"),
+			Parameters:  []ParameterSpec{PathStringParam("snapshot_id", "Inventory snapshot identifier"), LimitParam(), OffsetParam()},
+			Responses:   ListResponses[coreclient.InventoryMovement]("Inventory movement collection"),
 		},
 	}
 }
