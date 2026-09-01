@@ -1,13 +1,19 @@
 package supplierapi
 
 import (
-	"github.com/matjeroapps/core/packages/money"
-	"github.com/matjeroapps/core/pkg/commerce"
+	"github.com/matjeroapps/supplier/internal/coreclient"
+	"github.com/matjeroapps/supplier/internal/money"
 )
 
+// Public request and response contracts for the Supplier API.
+//
+// These are owned by this repository. They are deliberately not the Core wire
+// shapes: the public contract is governed here, so a Core change cannot silently
+// alter what a supplier-facing client sees.
+
 type SupplierProfileResponse struct {
-	Supplier commerce.Supplier `json:"supplier"`
-	Settings map[string]any    `json:"settings"`
+	Supplier coreclient.Supplier `json:"supplier"`
+	Settings map[string]any      `json:"settings"`
 }
 
 type SupplierProfileUpdateRequest struct {
@@ -54,8 +60,8 @@ type SupplierOfferCreateRequest struct {
 }
 
 type ProductCreateResponse struct {
-	Product         commerce.Product         `json:"product"`
-	SupplierProduct commerce.SupplierProduct `json:"supplier_product"`
+	Product         coreclient.Product         `json:"product"`
+	SupplierProduct coreclient.SupplierProduct `json:"supplier_product"`
 }
 
 type InventorySnapshotCreateRequest struct {
@@ -71,6 +77,6 @@ type InventoryAdjustmentRequest struct {
 }
 
 type InventoryAdjustmentResponse struct {
-	Snapshot commerce.InventorySnapshot `json:"snapshot"`
-	Movement commerce.InventoryMovement `json:"movement"`
+	Snapshot coreclient.InventorySnapshot `json:"snapshot"`
+	Movement coreclient.InventoryMovement `json:"movement"`
 }
