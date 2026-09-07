@@ -5,7 +5,7 @@ import { supplierNavigation } from '@matjerhub/ui';
 
 describe('Supplier Portal Foundation & Navigation', () => {
   it('defines valid supplier navigation items', () => {
-    const paths = supplierNavigation.map((n) => n.path);
+    const paths = supplierNavigation.map((n: { path: string }) => n.path);
     expect(paths).toContain('/dashboard');
     expect(paths).toContain('/catalog');
     expect(paths).toContain('/offers');

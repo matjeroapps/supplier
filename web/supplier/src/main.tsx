@@ -104,7 +104,7 @@ function App() {
       appTitle="MatjerHub Supplier"
       navItems={supplierNavigation}
       currentPath={currentPath}
-      onNavigate={(path) => {
+      onNavigate={(path: string) => {
         setCurrentPath(path);
         window.history.pushState({}, '', path);
       }}
@@ -122,8 +122,8 @@ function App() {
         <Card variant="glass">
           <CardTitle>Supplier Profile</CardTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px', maxWidth: '400px' }}>
-            <Input label="Supplier Name" value={profileName} onChange={(e) => setProfileName(e.target.value)} />
-            <Input label="Status" value={profileStatus} onChange={(e) => setProfileStatus(e.target.value)} />
+            <Input label="Supplier Name" value={profileName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileName(e.target.value)} />
+            <Input label="Status" value={profileStatus} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileStatus(e.target.value)} />
             <Button onClick={() => void submitProfile()}>Save Profile</Button>
           </div>
         </Card>
