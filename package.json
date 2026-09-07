@@ -2,7 +2,6 @@
   "name": "matjero-supplier",
   "private": true,
   "workspaces": [
-    
     "web/supplier"
   ],
   "scripts": {
@@ -12,5 +11,8 @@
   },
   "devDependencies": {
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@matjerhub/ui-sdk": "^0.1.0"
   }
 }
