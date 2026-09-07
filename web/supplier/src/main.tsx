@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { createApiClient } from './lib/api';
 import { directionFor, messages, type Locale } from './i18n/locales';
-import '@matjerhub/ui/styles.css';
+import '@matjerhub/ui-sdk/styles.css';
 import {
   DashboardLayout,
   supplierNavigation,
@@ -12,7 +12,7 @@ import {
   CardTitle,
   Button,
   Input,
-} from '@matjerhub/ui';
+} from '@matjerhub/ui-sdk';
 import './styles.css';
 
 type Market = { code: string; country: { name: string }; currency: { code: string } };
