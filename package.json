@@ -2,7 +2,7 @@
   "name": "matjero-supplier",
   "private": true,
   "workspaces": [
-    "packages/ui",
+    
     "web/supplier"
   ],
   "scripts": {
