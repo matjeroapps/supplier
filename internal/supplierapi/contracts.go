@@ -80,3 +80,19 @@ type InventoryAdjustmentResponse struct {
 	Snapshot coreclient.InventorySnapshot `json:"snapshot"`
 	Movement coreclient.InventoryMovement `json:"movement"`
 }
+
+type CreateSyncJobRequest struct {
+	ConnectionID string `json:"connection_id"`
+	SupplierID   string `json:"supplier_id"`
+}
+
+type SupplierSyncJobResponse struct {
+	ID             string `json:"id"`
+	ConnectionID   string `json:"connection_id"`
+	SupplierID     string `json:"supplier_id"`
+	Status         string `json:"status"`
+	TotalItems     int    `json:"total_items"`
+	ProcessedItems int    `json:"processed_items"`
+	FailedItems    int    `json:"failed_items"`
+	ErrorSummary   string `json:"error_summary,omitempty"`
+}

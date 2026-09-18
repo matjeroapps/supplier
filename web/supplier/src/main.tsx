@@ -30,6 +30,7 @@ type Product = { id: string; slug: string; status: string };
 type Offer = { id: string; market_code: string; status: string; supplier_code?: string };
 type Snapshot = { id: string; fulfillment_location_id: string; sku_id: string; on_hand_qty: number; reserved_qty: number; version: number };
 type Movement = { id: string; movement_type: string; quantity_delta: number; on_hand_qty: number; reserved_qty: number; created_at: string };
+type SyncJob = { id: string; connection_id: string; supplier_id: string; status: string; total_items: number; processed_items: number; failed_items: number; error_summary?: string };
 
 const locale = (new URLSearchParams(window.location.search).get('locale') === 'ar' ? 'ar' : 'en') satisfies Locale;
 const copy = messages[locale];
@@ -46,6 +47,7 @@ function App() {
   const [offers, setOffers] = React.useState<Offer[]>([]);
   const [snapshots, setSnapshots] = React.useState<Snapshot[]>([]);
   const [movements, setMovements] = React.useState<Movement[]>([]);
+  const [syncJobs, setSyncJobs] = React.useState<SyncJob[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [profileName, setProfileName] = React.useState('');
@@ -58,14 +60,15 @@ function App() {
     async function load() {
       try {
         setLoading(true);
-        const [bootRes, profileRes, marketsRes, locationsRes, productsRes, offersRes, inventoryRes] = await Promise.all([
+        const [bootRes, profileRes, marketsRes, locationsRes, productsRes, offersRes, inventoryRes, syncRes] = await Promise.all([
           api.get(`/v1/bootstrap?locale=${locale}`),
           api.get(`/v1/supplier/profile?locale=${locale}`),
           api.get(`/v1/supplier/markets?locale=${locale}`),
           api.get(`/v1/supplier/locations?locale=${locale}`),
           api.get(`/v1/supplier/products?locale=${locale}`),
           api.get(`/v1/supplier/offers?locale=${locale}`),
-          api.get(`/v1/supplier/inventory?locale=${locale}`)
+          api.get(`/v1/supplier/inventory?locale=${locale}`),
+          api.get(`/v1/supplier/integrations/sync-jobs?locale=${locale}`).catch(() => null)
         ]);
         if (!active) return;
         setBootstrap(await bootRes.json());
@@ -78,6 +81,9 @@ function App() {
         setProducts((await productsRes.json() as { items: Product[] }).items);
         setOffers((await offersRes.json() as { items: Offer[] }).items);
         setSnapshots((await inventoryRes.json() as { items: Snapshot[] }).items);
+        if (syncRes && syncRes.ok) {
+          setSyncJobs((await syncRes.json() as { items: SyncJob[] }).items || []);
+        }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : 'Failed to load supplier dashboard');
       } finally {
@@ -97,6 +103,16 @@ function App() {
       settings: JSON.parse(profileSettings || '{}')
     });
     if (!response.ok) throw new Error('Profile update failed');
+  }
+
+  async function triggerCatalogSync() {
+    const response = await api.post(`/v1/supplier/integrations/sync-jobs?locale=${locale}`, {
+      connection_id: 'default_supplier_connector'
+    });
+    if (response.ok) {
+      const job = await response.json() as SyncJob;
+      setSyncJobs((prev: SyncJob[]) => [job, ...prev]);
+    }
   }
 
   return (
@@ -125,6 +141,22 @@ function App() {
             <Input label="Supplier Name" value={profileName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileName(e.target.value)} />
             <Input label="Status" value={profileStatus} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfileStatus(e.target.value)} />
             <Button onClick={() => void submitProfile()}>Save Profile</Button>
+          </div>
+        </Card>
+
+        <Card variant="glass">
+          <CardTitle>External Platform Integrations & Catalog Sync</CardTitle>
+          <div style={{ marginTop: '12px' }}>
+            <Button onClick={() => void triggerCatalogSync()}>Trigger Catalog Import Sync</Button>
+            {syncJobs.length > 0 && (
+              <ul style={{ marginTop: '12px', listStyle: 'none', padding: 0 }}>
+                {syncJobs.map((job: SyncJob) => (
+                  <li key={job.id} style={{ padding: '8px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    Job <strong>{job.id}</strong> — Status: <em>{job.status}</em> (Processed: {job.processed_items || 0} / {job.total_items || 0})
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Card>
       </div>
