@@ -128,6 +128,21 @@ func (s *stubCore) ListInventoryMovements(ctx context.Context, supplierID, snaps
 	return s.movements, s.err
 }
 
+func (s *stubCore) CreateSupplierSyncJob(ctx context.Context, subject, connectionID, supplierID string) (*coreclient.SupplierSyncJobResponse, error) {
+	s.subject, s.supplierID = subject, supplierID
+	return &coreclient.SupplierSyncJobResponse{ID: "job-1", ConnectionID: connectionID, SupplierID: supplierID, Status: "queued"}, s.err
+}
+
+func (s *stubCore) GetSupplierSyncJob(ctx context.Context, subject, jobID string) (*coreclient.SupplierSyncJobResponse, error) {
+	s.subject, s.resourceID = subject, jobID
+	return &coreclient.SupplierSyncJobResponse{ID: jobID, ConnectionID: "conn-1", SupplierID: "sup-1", Status: "completed"}, s.err
+}
+
+func (s *stubCore) ListSupplierSyncJobs(ctx context.Context, subject, supplierID string) ([]coreclient.SupplierSyncJobResponse, error) {
+	s.subject, s.supplierID = subject, supplierID
+	return []coreclient.SupplierSyncJobResponse{{ID: "job-1", Status: "completed"}}, s.err
+}
+
 // newHandler builds the supplier routes behind an authenticated principal.
 func newHandler(core CoreCapabilities) http.Handler {
 	router := chi.NewRouter()
@@ -444,4 +459,37 @@ func TestSupplierOfferPriceRoundTrips(t *testing.T) {
 	// The request decoded into the local money type without error, which is what
 	// the public contract requires.
 	var _ money.Money
+}
+
+func TestSupplierCreateSyncJob(t *testing.T) {
+	core := &stubCore{}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodPost, "/v1/supplier/integrations/sync-jobs", `{"connection_id":"conn-1"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body %q)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSupplierGetSyncJob(t *testing.T) {
+	core := &stubCore{}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/integrations/sync-jobs/job-123", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
+	}
+	if core.resourceID != "job-123" {
+		t.Errorf("job id = %q, want job-123", core.resourceID)
+	}
+}
+
+func TestSupplierListSyncJobs(t *testing.T) {
+	core := &stubCore{}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/integrations/sync-jobs", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
+	}
 }

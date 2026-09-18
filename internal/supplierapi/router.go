@@ -34,6 +34,9 @@ type CoreCapabilities interface {
 	CreateInventorySnapshot(ctx context.Context, supplierID, subject string, create coreclient.SnapshotCreate) (coreclient.InventorySnapshot, error)
 	AdjustInventory(ctx context.Context, supplierID, snapshotID, subject string, adjustment coreclient.InventoryAdjustment) (coreclient.InventoryAdjustmentResult, error)
 	ListInventoryMovements(ctx context.Context, supplierID, snapshotID, subject string, page coreclient.Page) ([]coreclient.InventoryMovement, error)
+	CreateSupplierSyncJob(ctx context.Context, subject, connectionID, supplierID string) (*coreclient.SupplierSyncJobResponse, error)
+	GetSupplierSyncJob(ctx context.Context, subject, jobID string) (*coreclient.SupplierSyncJobResponse, error)
+	ListSupplierSyncJobs(ctx context.Context, subject, supplierID string) ([]coreclient.SupplierSyncJobResponse, error)
 }
 
 // Dependencies wires the supplier routes.
@@ -57,6 +60,9 @@ func RegisterSupplierRoutes(deps Dependencies) func(r chi.Router) {
 		r.Post("/supplier/inventory/snapshots", deps.handleSupplierInventorySnapshotCreate)
 		r.Post("/supplier/inventory/{snapshot_id}/adjustments", deps.handleSupplierInventoryAdjustment)
 		r.Get("/supplier/inventory/{snapshot_id}/movements", deps.handleSupplierInventoryMovements)
+		r.Post("/supplier/integrations/sync-jobs", deps.handleCreateSupplierSyncJob)
+		r.Get("/supplier/integrations/sync-jobs/{id}", deps.handleGetSupplierSyncJob)
+		r.Get("/supplier/integrations/sync-jobs", deps.handleListSupplierSyncJobs)
 	}
 }
 
