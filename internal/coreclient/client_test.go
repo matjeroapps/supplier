@@ -463,3 +463,35 @@ func TestClientForwardsLocale(t *testing.T) {
 		t.Errorf("locale = %q, want ar", got)
 	}
 }
+
+func TestClientSupplierRetailCapability(t *testing.T) {
+	stub := newStubCore(t, jsonHandler(200, `{"affiliation":{"supplier_id":"sup_123","seller_id":"sel_123"},"seller":{"id":"sel_123","code":"store1","name":"Store 1","status":"active"}}`))
+	client := stub.client(t)
+
+	res, err := client.GetSupplierRetailCapability(context.Background(), "sup_123", "sub_123")
+	if err != nil {
+		t.Fatalf("GetSupplierRetailCapability: %v", err)
+	}
+	if res.Seller.ID != "sel_123" || res.Affiliation.SupplierID != "sup_123" {
+		t.Errorf("unexpected response: %+v", res)
+	}
+	if stub.last.URL.Path != "/internal/v1/suppliers/sup_123/retail-capability" {
+		t.Errorf("path = %q", stub.last.URL.Path)
+	}
+}
+
+func TestClientSupplierStores(t *testing.T) {
+	stub := newStubCore(t, jsonHandler(200, `{"items":[{"id":"str_123","seller_id":"sel_123","market_code":"EG","code":"mystore","name":"My Store","status":"active"}]}`))
+	client := stub.client(t)
+
+	stores, err := client.ListSupplierStores(context.Background(), "sup_123", "sub_123", Page{})
+	if err != nil {
+		t.Fatalf("ListSupplierStores: %v", err)
+	}
+	if len(stores) != 1 || stores[0].ID != "str_123" {
+		t.Errorf("unexpected stores: %+v", stores)
+	}
+	if stub.last.URL.Path != "/internal/v1/suppliers/sup_123/stores" {
+		t.Errorf("path = %q", stub.last.URL.Path)
+	}
+}

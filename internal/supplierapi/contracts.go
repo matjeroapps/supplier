@@ -96,3 +96,22 @@ type SupplierSyncJobResponse struct {
 	FailedItems    int    `json:"failed_items"`
 	ErrorSummary   string `json:"error_summary,omitempty"`
 }
+
+type SupplierRetailCapabilityRequest struct {
+	Code     string         `json:"code"`
+	Name     string         `json:"name"`
+	Settings map[string]any `json:"settings"`
+}
+
+type SupplierRetailCapabilityResponse struct {
+	Affiliation coreclient.SupplierSellerAffiliation `json:"affiliation"`
+	Seller      coreclient.Seller                    `json:"seller"`
+}
+
+type SupplierStoreCreateRequest struct {
+	MarketCode string         `json:"market_code"`
+	Code       string         `json:"code"`
+	Name       string         `json:"name"`
+	Status     string         `json:"status"`
+	Settings   map[string]any `json:"settings"`
+}

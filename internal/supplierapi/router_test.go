@@ -143,6 +143,32 @@ func (s *stubCore) ListSupplierSyncJobs(ctx context.Context, subject, supplierID
 	return []coreclient.SupplierSyncJobResponse{{ID: "job-1", Status: "completed"}}, s.err
 }
 
+func (s *stubCore) GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (*coreclient.SupplierRetailCapabilityResponse, error) {
+	s.supplierID, s.subject = supplierID, subject
+	return &coreclient.SupplierRetailCapabilityResponse{
+		Affiliation: coreclient.SupplierSellerAffiliation{SupplierID: supplierID, SellerID: "sel-1"},
+		Seller:      coreclient.Seller{ID: "sel-1", Code: "store1", Name: "Store 1", Status: "active"},
+	}, s.err
+}
+
+func (s *stubCore) CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req coreclient.SupplierRetailCapabilityRequest) (*coreclient.SupplierRetailCapabilityResponse, error) {
+	s.supplierID, s.subject = supplierID, subject
+	return &coreclient.SupplierRetailCapabilityResponse{
+		Affiliation: coreclient.SupplierSellerAffiliation{SupplierID: supplierID, SellerID: "sel-1"},
+		Seller:      coreclient.Seller{ID: "sel-1", Code: req.Code, Name: req.Name, Status: "active"},
+	}, s.err
+}
+
+func (s *stubCore) ListSupplierStores(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.Store, error) {
+	s.supplierID, s.subject, s.page = supplierID, subject, page
+	return []coreclient.Store{{ID: "str-1", SellerID: "sel-1", MarketCode: "EG", Code: "store1", Name: "Store 1", Status: "active"}}, s.err
+}
+
+func (s *stubCore) CreateSupplierStore(ctx context.Context, supplierID, subject string, req coreclient.SupplierStoreCreateRequest) (coreclient.Store, error) {
+	s.supplierID, s.subject = supplierID, subject
+	return coreclient.Store{ID: "str-1", SellerID: "sel-1", MarketCode: req.MarketCode, Code: req.Code, Name: req.Name, Status: req.Status}, s.err
+}
+
 // newHandler builds the supplier routes behind an authenticated principal.
 func newHandler(core CoreCapabilities) http.Handler {
 	router := chi.NewRouter()
@@ -491,5 +517,35 @@ func TestSupplierListSyncJobs(t *testing.T) {
 	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/integrations/sync-jobs", "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSupplierRetailCapability(t *testing.T) {
+	core := &stubCore{}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/retail-capability", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
+	}
+
+	postRec := doRequest(t, handler, http.MethodPost, "/v1/supplier/retail-capability", `{"code":"store1","name":"Store 1"}`)
+	if postRec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body %q)", postRec.Code, postRec.Body.String())
+	}
+}
+
+func TestSupplierStores(t *testing.T) {
+	core := &stubCore{}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/stores", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
+	}
+
+	postRec := doRequest(t, handler, http.MethodPost, "/v1/supplier/stores", `{"market_code":"EG","code":"store1","name":"Store 1","status":"active"}`)
+	if postRec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body %q)", postRec.Code, postRec.Body.String())
 	}
 }
