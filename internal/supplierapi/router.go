@@ -37,6 +37,10 @@ type CoreCapabilities interface {
 	CreateSupplierSyncJob(ctx context.Context, subject, connectionID, supplierID string) (*coreclient.SupplierSyncJobResponse, error)
 	GetSupplierSyncJob(ctx context.Context, subject, jobID string) (*coreclient.SupplierSyncJobResponse, error)
 	ListSupplierSyncJobs(ctx context.Context, subject, supplierID string) ([]coreclient.SupplierSyncJobResponse, error)
+	GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (*coreclient.SupplierRetailCapabilityResponse, error)
+	CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req coreclient.SupplierRetailCapabilityRequest) (*coreclient.SupplierRetailCapabilityResponse, error)
+	ListSupplierStores(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.Store, error)
+	CreateSupplierStore(ctx context.Context, supplierID, subject string, req coreclient.SupplierStoreCreateRequest) (coreclient.Store, error)
 }
 
 // Dependencies wires the supplier routes.
@@ -63,6 +67,10 @@ func RegisterSupplierRoutes(deps Dependencies) func(r chi.Router) {
 		r.Post("/supplier/integrations/sync-jobs", deps.handleCreateSupplierSyncJob)
 		r.Get("/supplier/integrations/sync-jobs/{id}", deps.handleGetSupplierSyncJob)
 		r.Get("/supplier/integrations/sync-jobs", deps.handleListSupplierSyncJobs)
+		r.Get("/supplier/retail-capability", deps.handleSupplierRetailCapability)
+		r.Post("/supplier/retail-capability", deps.handleSupplierRetailCapabilityCreate)
+		r.Get("/supplier/stores", deps.handleSupplierStores)
+		r.Post("/supplier/stores", deps.handleSupplierStoreCreate)
 	}
 }
 
@@ -348,6 +356,82 @@ func (deps Dependencies) handleSupplierInventoryMovements(w http.ResponseWriter,
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (deps Dependencies) handleSupplierRetailCapability(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	resp, err := deps.Core.GetSupplierRetailCapability(r.Context(), supplierID, subject)
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, SupplierRetailCapabilityResponse{
+		Affiliation: resp.Affiliation,
+		Seller:      resp.Seller,
+	})
+}
+
+func (deps Dependencies) handleSupplierRetailCapabilityCreate(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	var body SupplierRetailCapabilityRequest
+	if !actorhttp.DecodeJSON(w, r, &body) {
+		return
+	}
+	resp, err := deps.Core.CreateSupplierRetailCapability(r.Context(), supplierID, subject, coreclient.SupplierRetailCapabilityRequest{
+		Code:     body.Code,
+		Name:     body.Name,
+		Settings: body.Settings,
+	})
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, SupplierRetailCapabilityResponse{
+		Affiliation: resp.Affiliation,
+		Seller:      resp.Seller,
+	})
+}
+
+func (deps Dependencies) handleSupplierStores(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	items, err := deps.Core.ListSupplierStores(r.Context(), supplierID, subject, pageFrom(r))
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (deps Dependencies) handleSupplierStoreCreate(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	var body SupplierStoreCreateRequest
+	if !actorhttp.DecodeJSON(w, r, &body) {
+		return
+	}
+	store, err := deps.Core.CreateSupplierStore(r.Context(), supplierID, subject, coreclient.SupplierStoreCreateRequest{
+		MarketCode: body.MarketCode,
+		Code:       body.Code,
+		Name:       body.Name,
+		Status:     body.Status,
+		Settings:   body.Settings,
+	})
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, store)
 }
 
 // pageFrom converts the shared pagination window into the Core client's shape.
