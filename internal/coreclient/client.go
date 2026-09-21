@@ -130,6 +130,16 @@ func (c *Client) put(ctx context.Context, path string, body any, opts requestOpt
 	return c.do(ctx, http.MethodPut, path, nil, body, opts, dst)
 }
 
+// patch performs a PATCH with a JSON body and decodes the response into dst.
+func (c *Client) patch(ctx context.Context, path string, body any, opts requestOptions, dst any) error {
+	return c.do(ctx, http.MethodPatch, path, nil, body, opts, dst)
+}
+
+// delete performs a DELETE and decodes the response into dst.
+func (c *Client) delete(ctx context.Context, path string, opts requestOptions, dst any) error {
+	return c.do(ctx, http.MethodDelete, path, nil, nil, opts, dst)
+}
+
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, opts requestOptions, dst any) error {
 	endpoint, err := c.url(path, query)
 	if err != nil {
