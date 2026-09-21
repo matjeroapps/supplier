@@ -45,29 +45,37 @@ type AffiliatedStore = { id: string; seller_id: string; market_code: string; cod
 
 // ─── App bootstrap ───────────────────────────────────────────────────────────
 
-const locale = (new URLSearchParams(window.location.search).get('locale') === 'ar' ? 'ar' : 'en') satisfies Locale;
-const copy = messages[locale];
-const api = createApiClient({ baseUrl: import.meta.env.VITE_API_BASE_URL ?? window.location.origin });
+const defaultLocale = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('locale') === 'ar' ? 'ar' : 'en') satisfies Locale;
+const api = createApiClient({ baseUrl: import.meta.env.VITE_API_BASE_URL ?? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') });
 
-document.documentElement.lang = locale;
-document.documentElement.dir = directionFor(locale);
-
-// ─── Navigation ──────────────────────────────────────────────────────────────
-
-const navItems = [
-  { id: 'dashboard', label: copy.nav.dashboard, path: '/dashboard' },
-  { id: 'products', label: copy.nav.products, path: '/products' },
-  { id: 'offers', label: copy.nav.offers, path: '/offers' },
-  { id: 'inventory', label: copy.nav.inventory, path: '/inventory' },
-  { id: 'locations', label: copy.nav.locations, path: '/locations' },
-  { id: 'integrations', label: copy.nav.integrations, path: '/integrations' },
-  { id: 'retail', label: copy.nav.retail, path: '/retail' },
-  { id: 'settings', label: copy.nav.settings, path: '/settings' },
-];
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = defaultLocale;
+  document.documentElement.dir = directionFor(defaultLocale);
+}
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 
-function App() {
+export function App({ initialPath, initialLocale }: { initialPath?: string; initialLocale?: Locale } = {}) {
+  const activeLocale = initialLocale ?? (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('locale') === 'ar' ? 'ar' : 'en');
+  const copy = messages[activeLocale];
+
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = activeLocale;
+      document.documentElement.dir = directionFor(activeLocale);
+    }
+  }, [activeLocale]);
+
+  const navItems = [
+    { id: 'dashboard', label: copy.nav.dashboard, path: '/dashboard' },
+    { id: 'products', label: copy.nav.products, path: '/products' },
+    { id: 'offers', label: copy.nav.offers, path: '/offers' },
+    { id: 'inventory', label: copy.nav.inventory, path: '/inventory' },
+    { id: 'locations', label: copy.nav.locations, path: '/locations' },
+    { id: 'integrations', label: copy.nav.integrations, path: '/integrations' },
+    { id: 'retail', label: copy.nav.retail, path: '/retail' },
+    { id: 'settings', label: copy.nav.settings, path: '/settings' },
+  ];
   // ── Core data ──
   const [bootstrap, setBootstrap] = React.useState<BootstrapPayload | null>(null);
   const [supplier, setSupplier] = React.useState<Supplier | null>(null);
@@ -87,7 +95,8 @@ function App() {
   const [loading, setLoading] = React.useState(true);
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null);
   const [currentPath, setCurrentPath] = React.useState(() => {
-    const p = window.location.pathname;
+    if (initialPath) return initialPath;
+    const p = typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
     return p && p !== '/' ? p : '/dashboard';
   });
 
@@ -147,16 +156,16 @@ function App() {
       try {
         setLoading(true);
         const [bootRes, profileRes, marketsRes, locationsRes, productsRes, offersRes, inventoryRes, syncRes, retailRes, storesRes] = await Promise.all([
-          api.get(`/v1/bootstrap?locale=${locale}`),
-          api.get(`/v1/supplier/profile?locale=${locale}`),
-          api.get(`/v1/supplier/markets?locale=${locale}`),
-          api.get(`/v1/supplier/locations?locale=${locale}`),
-          api.get(`/v1/supplier/products?locale=${locale}`),
-          api.get(`/v1/supplier/offers?locale=${locale}`),
-          api.get(`/v1/supplier/inventory?locale=${locale}`),
-          api.get(`/v1/supplier/integrations/sync-jobs?locale=${locale}`).catch(() => null),
-          api.get(`/v1/supplier/retail-capability?locale=${locale}`).catch(() => null),
-          api.get(`/v1/supplier/stores?locale=${locale}`).catch(() => null),
+          api.get(`/v1/bootstrap?locale=${activeLocale}`),
+          api.get(`/v1/supplier/profile?locale=${activeLocale}`),
+          api.get(`/v1/supplier/markets?locale=${activeLocale}`),
+          api.get(`/v1/supplier/locations?locale=${activeLocale}`),
+          api.get(`/v1/supplier/products?locale=${activeLocale}`),
+          api.get(`/v1/supplier/offers?locale=${activeLocale}`),
+          api.get(`/v1/supplier/inventory?locale=${activeLocale}`),
+          api.get(`/v1/supplier/integrations/sync-jobs?locale=${activeLocale}`).catch(() => null),
+          api.get(`/v1/supplier/retail-capability?locale=${activeLocale}`).catch(() => null),
+          api.get(`/v1/supplier/stores?locale=${activeLocale}`).catch(() => null),
         ]);
         if (!active) return;
 
@@ -182,7 +191,7 @@ function App() {
 
     void load();
     return () => { active = false; };
-  }, []);
+  }, [activeLocale]);
 
   // ─── Action helpers ───────────────────────────────────────────────────────
 
@@ -197,7 +206,7 @@ function App() {
       .map(s => s.trim())
       .filter(Boolean);
 
-    const res = await api.post(`/v1/supplier/products?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/products?locale=${activeLocale}`, {
       slug: productForm.slug,
       supplier_code: productForm.supplierCode,
       status: productForm.status,
@@ -220,7 +229,7 @@ function App() {
 
   async function handleCreateOffer() {
     const moqValue = parseInt(offerForm.moq, 10) || 1;
-    const res = await api.post(`/v1/supplier/offers?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/offers?locale=${activeLocale}`, {
       supplier_product_id: offerForm.supplierProductId,
       supplier_market_id: offerForm.supplierMarketId,
       market_code: offerForm.marketCode,
@@ -240,7 +249,7 @@ function App() {
 
   async function handleAdjustInventory() {
     if (!selectedSnapshotId) return;
-    const res = await api.post(`/v1/supplier/inventory/${selectedSnapshotId}/adjustments?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/inventory/${selectedSnapshotId}/adjustments?locale=${activeLocale}`, {
       quantity_delta: parseInt(adjustForm.quantityDelta, 10),
       movement_type: adjustForm.movementType,
       reason: adjustForm.reason,
@@ -258,14 +267,14 @@ function App() {
   async function handleLoadMovements(snapshotId: string) {
     setSelectedSnapshotId(snapshotId);
     setInventoryTab('movements');
-    const res = await api.get(`/v1/supplier/inventory/${snapshotId}/movements?locale=${locale}`);
+    const res = await api.get(`/v1/supplier/inventory/${snapshotId}/movements?locale=${activeLocale}`);
     if (res.ok) {
       setMovements((await res.json() as { items: Movement[] }).items ?? []);
     }
   }
 
   async function handleCreateLocation() {
-    const res = await api.post(`/v1/supplier/locations?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/locations?locale=${activeLocale}`, {
       supplier_market_id: locationForm.supplierMarketId,
       market_code: locationForm.marketCode,
       code: locationForm.code,
@@ -283,7 +292,7 @@ function App() {
   }
 
   async function handleTriggerSync() {
-    const res = await api.post(`/v1/supplier/integrations/sync-jobs?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/integrations/sync-jobs?locale=${activeLocale}`, {
       connection_id: 'default_supplier_connector',
     });
     if (res.ok) {
@@ -294,7 +303,7 @@ function App() {
   }
 
   async function handleProvisionRetail() {
-    const res = await api.post(`/v1/supplier/retail-capability?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/retail-capability?locale=${activeLocale}`, {
       code: retailProvisionForm.code,
       name: retailProvisionForm.name,
     });
@@ -307,7 +316,7 @@ function App() {
   }
 
   async function handleCreateStore() {
-    const res = await api.post(`/v1/supplier/stores?locale=${locale}`, {
+    const res = await api.post(`/v1/supplier/stores?locale=${activeLocale}`, {
       market_code: createStoreForm.marketCode,
       code: createStoreForm.code,
       name: createStoreForm.name,
@@ -323,7 +332,7 @@ function App() {
 
   async function handleMediaUpload(productId: string, file: File) {
     // Presigned S3 upload: intent → binary PUT → complete
-    const intentRes = await api.post(`/v1/supplier/products/${productId}/media-intent?locale=${locale}`, {
+    const intentRes = await api.post(`/v1/supplier/products/${productId}/media-intent?locale=${activeLocale}`, {
       content_type: file.type,
       file_name: file.name,
     });
@@ -334,7 +343,7 @@ function App() {
     await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
 
     // Completion verification
-    const completeRes = await api.post(`/v1/supplier/products/${productId}/media-complete?locale=${locale}`, { media_id });
+    const completeRes = await api.post(`/v1/supplier/products/${productId}/media-complete?locale=${activeLocale}`, { media_id });
     if (completeRes.ok) {
       const media = await completeRes.json() as MediaItem;
       setMediaItems(prev => [...prev, media]);
@@ -342,21 +351,21 @@ function App() {
   }
 
   async function handleMediaDelete(productId: string, mediaId: string) {
-    const res = await api.delete(`/v1/supplier/products/${productId}/media/${mediaId}?locale=${locale}`);
+    const res = await api.delete(`/v1/supplier/products/${productId}/media/${mediaId}?locale=${activeLocale}`);
     if (res && res.ok) {
       setMediaItems(prev => prev.filter(m => m.id !== mediaId));
     }
   }
 
   async function handleSetPrimaryMedia(productId: string, mediaId: string) {
-    const res = await api.post(`/v1/supplier/products/${productId}/media/${mediaId}/primary?locale=${locale}`, {});
+    const res = await api.post(`/v1/supplier/products/${productId}/media/${mediaId}/primary?locale=${activeLocale}`, {});
     if (res.ok) {
       setMediaItems(prev => prev.map(m => ({ ...m, is_primary: m.id === mediaId })));
     }
   }
 
   async function handleSaveSettings() {
-    const res = await api.put(`/v1/supplier/profile?locale=${locale}`, {
+    const res = await api.put(`/v1/supplier/profile?locale=${activeLocale}`, {
       name: profileName,
       status: profileStatus,
       settings: JSON.parse(profileSettings || '{}'),
@@ -727,7 +736,7 @@ function App() {
                   <TableHead>{copy.retail.storeCode}</TableHead>
                   <TableHead>{copy.retail.storeName}</TableHead>
                   <TableHead>{copy.retail.marketCode}</TableHead>
-                  <TableHead>{copy.retail.storeCode}</TableHead>
+                  <TableHead>{copy.products.status}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
