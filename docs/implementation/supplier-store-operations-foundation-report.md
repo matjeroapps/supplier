@@ -1,10 +1,16 @@
 # Implementation & Verification Report: Supplier Store Operations Foundation and Live Vertical Slice
 
-## 1. Scope & Objective
+## 1. Scope & Historical Context
 
-This report documents the corrective audit, implementation verification, and evidence-based test results for the **Supplier Store Operations Foundation and Live Vertical Slice** in `matjeroapps/supplier` following the merge of PR #12 into `main`.
+This report documents the post-merge audit, evidence reconciliation, and verification status of the **Supplier Store Operations Foundation and Live Vertical Slice** in `matjeroapps/supplier`.
 
-The Supplier Portal provides production-grade capabilities for wholesale commerce supply operations:
+### PR History & Merged Baseline
+- **PR #11**: Initial foundation implementation of wholesale operations, BFF routing, and ADR-019 retail capability.
+- **PR #12**: Initial baseline merge into `main`.
+- **PR #13**: Corrective follow-up audit merged into `main` (expanded frontend test suite to 39 tests, exported `App` for component testing, corrected retail stores table header, and sanitized documentation paths).
+- **Current `main` Baseline SHA**: `a2c5709`
+
+The Supplier Portal establishes wholesale supply operations as its primary topology:
 - **Wholesale Catalog Operations**: Multi-SKU product authoring (distinct SKU codes and barcodes), multi-locale localization (Arabic & English), category assignment, and media gallery with presigned S3 upload flows (intent -> binary upload -> complete verification -> primary designation -> deletion).
 - **Wholesale Market Offers**: Publication of B2B market offers with wholesale unit pricing, currency formatting, minimum order quantity (MOQ) enforcement, and availability controls.
 - **Inventory & Fulfillment**: Fulfillment location registry, real-time snapshot overview (on-hand vs. reserved stock), stock adjustment modal with movement type selector (adjustment, receipt, shipment, return), and movement history audit log.
@@ -19,7 +25,7 @@ The Supplier Portal provides production-grade capabilities for wholesale commerc
 ### Repository Independence (ADR-017)
 - `matjeroapps/supplier` accesses all Core-owned domain invariants over HTTP via `internal/coreclient`.
 - Request and response contracts are strictly owned within the Supplier repository (`internal/supplierapi/contracts.go` and `internal/coreclient/suppliers.go`).
-- **Zero direct Core database access**: Handlers communicate exclusively through the Core HTTP gateway.
+- **Zero direct Core database access**: Verified via code inspection; handlers communicate exclusively through the Core HTTP gateway.
 - **Zero direct Core Go package imports**: Audited via `grep -r 'github.com/matjeroapps/core' internal/` -> 0 matches.
 
 ### Phase-Name Leakage Audit
@@ -27,17 +33,20 @@ The Supplier Portal provides production-grade capabilities for wholesale commerc
 
 ---
 
-## 3. Detailed Component Changes & Audit Corrective Actions
+## 3. Detailed Component Status & Verification Classification
 
-| Component | Files | Summary of Verification & Changes |
-|-----------|-------|-----------------------------------|
-| **Core Client** | `internal/coreclient/client.go`<br>`internal/coreclient/suppliers.go`<br>`internal/coreclient/client_test.go` | Added `patch` and `delete` HTTP methods; added ADR-019 retail capability and store DTOs (`SupplierSellerAffiliation`, `AffiliatedSeller`, `AffiliatedStore`, `SupplierRetailCapabilityRequest/Response`, `SupplierStoreCreateRequest`) and methods; contract tests verified with `-race`. |
-| **API Contracts & Router** | `internal/supplierapi/contracts.go`<br>`internal/supplierapi/router.go`<br>`internal/supplierapi/integration.go`<br>`internal/supplierapi/router_test.go` | Added public retail capability and store request/response types; added 4 new routes (`GET/POST /v1/supplier/retail-capability`, `GET/POST /v1/supplier/stores`) with strict subject resolution and tenant isolation; contract tests verified. |
-| **OpenAPI Contract** | `internal/openapi/specs.go`<br>`docs/api/supplier/openapi.json` | Registered route specs for sync jobs, retail capability, and stores; verified regeneration and exact diff match. |
-| **Localization** | `web/supplier/src/i18n/locales.ts` | 100% paired Arabic (RTL) and English (LTR) translations across all 9 groups: `nav`, `kpi`, `products`, `offers`, `inventory`, `locations`, `integrations`, `retail`, `settings`, and `common`. |
-| **Supplier Web SPA** | `web/supplier/src/main.tsx`<br>`web/supplier/src/lib/api.ts` | Exported `App` component with `initialPath` and `initialLocale` props for comprehensive testing; ensured all API calls dynamically forward active locale; fixed duplicate column header in retail store table to correctly display status. |
-| **Frontend Test Suite** | `web/supplier/src/main.test.tsx` | Expanded from 26 unit tests to 39 comprehensive tests covering dashboard rendering, all 8 workspace navigations, product authoring, presigned media gallery workflow, market offers, stock adjustment, movement history, fulfillment locations, sync job triggers & retries, ADR-019 retail capability provisioning & store creation, settings, RTL/LTR layout behavior, and API error states. |
-| **Documentation Hygiene** | `docs/plans/supplier-store-operations-foundation-plan.md`<br>`docs/implementation/supplier-store-operations-foundation-report.md` | Replaced all machine-specific absolute paths with repository-relative paths per Documentation Path Rule. |
+| Component | Files | Classification | Evidence & Summary |
+|-----------|-------|----------------|-------------------|
+| **Core Client Layer** | `internal/coreclient/client.go`<br>`internal/coreclient/suppliers.go`<br>`internal/coreclient/client_test.go` | **IMPLEMENTED & CONTRACT VERIFIED** | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` methods; retail capability DTOs (`SupplierSellerAffiliation`, `AffiliatedSeller`, `AffiliatedStore`, `SupplierRetailCapabilityRequest/Response`, `SupplierStoreCreateRequest`); 25 contract tests pass with `-race` (0 data races). |
+| **API Contracts & Router** | `internal/supplierapi/contracts.go`<br>`internal/supplierapi/router.go`<br>`internal/supplierapi/integration.go`<br>`internal/supplierapi/router_test.go` | **IMPLEMENTED & CONTRACT VERIFIED** | Public retail capability and store request/response types; 4 new routes (`GET/POST /v1/supplier/retail-capability`, `GET/POST /v1/supplier/stores`) with strict subject resolution and tenant isolation; 28 tests pass with `-race` (0 data races). |
+| **OpenAPI Contract** | `internal/openapi/specs.go`<br>`docs/api/supplier/openapi.json` | **IMPLEMENTED & VERIFIED** | Registered route specs for sync jobs, retail capability, and stores; verified regeneration and exact diff match (0 diff). |
+| **Localization** | `web/supplier/src/i18n/locales.ts` | **IMPLEMENTED & VERIFIED** | 100% paired Arabic (RTL) and English (LTR) translations across all 9 groups: `nav`, `kpi`, `products`, `offers`, `inventory`, `locations`, `integrations`, `retail`, `settings`, and `common`. Verified via `check-locales.mjs`. |
+| **Supplier Web SPA** | `web/supplier/src/main.tsx`<br>`web/supplier/src/lib/api.ts` | **IMPLEMENTED & COMPONENT VERIFIED** | Single-page application using `@matjerhub/ui-sdk` with 8 workspaces: Dashboard, Products, Offers, Inventory, Locations, Integrations, Retail, and Settings. Tested with mocked HTTP contracts in Vitest. |
+| **Frontend Test Suite** | `web/supplier/src/main.test.tsx` | **IMPLEMENTED & VERIFIED** | 39 automated tests covering locale parity, DOM direction (`dir="rtl"` / `dir="ltr"`), dashboard rendering, workspace navigation, product authoring, presigned media workflow, market offers, stock adjustment, movement history, fulfillment locations, sync job triggers & retries, ADR-019 retail capability provisioning & store creation, settings, and API error states. |
+| **Documentation Hygiene** | `docs/plans/supplier-store-operations-foundation-plan.md`<br>`docs/implementation/supplier-store-operations-foundation-report.md` | **VERIFIED** | 100% repository-relative paths. Zero machine-specific absolute paths. |
+| **Physical S3/MinIO Storage** | N/A | **NOT VERIFIED / ENVIRONMENT LIMITATION** | Presigned upload contracts and browser workflows are verified via client mocks; live uploads to a physical AWS S3 / MinIO cluster are not verified as no physical storage cluster is provisioned in the local sandbox. |
+| **Live External Connectors** | N/A | **NOT VERIFIED / ENVIRONMENT LIMITATION** | Sync Hub UI, job state machines, progress metrics, and error summaries are verified; live external sync execution against third-party platforms (e.g. Salla, Zid, ERP) is not verified. |
+| **Live Cross-Service Multi-Process Orchestration** | N/A | **NOT VERIFIED / ENVIRONMENT LIMITATION** | BFF-to-Core HTTP contract execution is verified via unit and contract test suites with stub servers; multi-service live networked execution against a running Core daemon with PostgreSQL was not performed. |
 
 ---
 
@@ -72,23 +81,23 @@ $ go test ./...
 # Exit code: 0 (All packages PASS)
 ```
 
-### C. OpenAPI Spec Generation & Parity
+### C. OpenAPI Spec Generation & Parity Check
 ```bash
 $ go run ./cmd/openapi-gen
 # Exit code: 0 (generated docs/api/supplier/openapi.json)
 
 $ git diff --exit-code docs/api/supplier/openapi.json
-# Exit code: 0 (no diff, spec is completely up-to-date)
+# Exit code: 0 (0 diff, spec is completely up-to-date)
 ```
 
 ### D. Frontend Locale Validation & Vitest Component Suite
 ```bash
-$ npm run test
+$ cd web/supplier && npm run test
 # Output:
 # node ../../scripts/check-locales.mjs supplier && vitest run
 # supplier: locale foundation ok
 #
-#  ✓ src/main.test.tsx (39 tests) 7509ms
+#  ✓ src/main.test.tsx (39 tests)
 #    ✓ Locale utilities (23 tests)
 #      ✓ directionFor returns rtl for Arabic
 #      ✓ directionFor returns ltr for English
@@ -134,7 +143,6 @@ $ npm run test
 #
 #  Test Files  1 passed (1)
 #       Tests  39 passed (39)
-#    Duration  16.40s
 # Exit code: 0
 ```
 
@@ -149,7 +157,7 @@ $ npm run build
 # dist/index.html                   0.17 kB │ gzip:  0.14 kB
 # dist/assets/index-DDjpnQET.css    5.54 kB │ gzip:  2.01 kB
 # dist/assets/index-CZuC1uDd.js   247.14 kB │ gzip: 73.28 kB
-# ✓ built in 9.64s
+# ✓ built in 7.49s
 # Exit code: 0
 ```
 
@@ -164,9 +172,9 @@ $ git diff --check
 ## 5. Media & Storage Verification
 
 - **Verified**:
-  - Supplier API media contracts and workflows (`media-intent` -> binary PUT -> `media-complete` -> set primary -> delete) are fully implemented and verified via automated Vitest component testing.
+  - Supplier API media contracts and workflows (`media-intent` -> binary PUT -> `media-complete` -> set primary -> delete) are fully implemented and verified via automated Vitest component testing and backend contract testing.
   - S3 URL and payload parameter passing verified.
-- **Not verified**:
+- **Not Verified**:
   - Live upload to a physical AWS S3 / MinIO storage bucket.
 - **Reason**:
   - No physical MinIO/S3 daemon is provisioned in the isolated local sandbox environment.
@@ -189,10 +197,10 @@ $ git diff --check
 - **Verified**:
   - End-to-end frontend interaction flows across all 8 workspaces against mocked HTTP contracts.
   - Supplier BFF router, subject validation, error translation, and Core client HTTP contract execution against stub Core HTTP servers.
-- **Not verified**:
+- **Not Verified**:
   - Live cross-network multi-service orchestration against a live running Core service instance with PostgreSQL.
 - **Reason**:
-  - Core database and live Core daemon are external dependencies not started during isolated repository testing.
+  - Core database and live Core daemon are external dependencies not running during isolated repository testing.
 
 ---
 
@@ -202,13 +210,15 @@ $ git diff --check
 2. **Tenant Isolation**: All supplier route handlers resolve the caller's supplier identity through Core (`deps.Core.ResolveSupplier(ctx, subject)`) before accessing any resource. A caller cannot assert another supplier's identifier.
 3. **Payload Boundaries**: All Core responses are bounded by `maxResponseBytes` (8 MiB) to guard against memory exhaustion.
 4. **Idempotent Retries**: Handlers avoid automatic write retries on non-idempotent operations, preserving transactional consistency.
+5. **Boundary Audit**: 0 direct imports of Core Go packages; 0 direct database queries.
 
 ---
 
-## 9. Conclusion & Summary
+## 9. Conclusion & Evidence Summary
 
-- **Plan Compliance**: Fully verified against `docs/plans/supplier-store-operations-foundation-plan.md`.
-- **Backend Verification**: PASS (76 tests passing with `-race`, 0 races, `go vet` clean, `gofmt` clean).
+- **Implementation**: The Supplier Store Operations Foundation and ADR-019 retail capability are fully implemented in the repository.
+- **Backend Verification**: PASS (76 Go test cases pass with `-race`, 0 data races, `go vet` clean, `gofmt` clean).
 - **OpenAPI Verification**: PASS (Generated with 0 diff).
-- **Frontend Verification**: PASS (39 Vitest tests passing, 100% Arabic RTL / English LTR parity, `tsc` typecheck clean, production build clean).
+- **Frontend Verification**: PASS (39 Vitest tests pass, RTL/LTR behavior covered by implemented locale and component tests, `tsc` clean, production build clean).
 - **Documentation Hygiene**: PASS (100% repository-relative paths, zero absolute paths).
+- **Documented Limitations**: Physical AWS S3/MinIO bucket upload, third-party live connector sync, and live cross-network Core+Postgres multi-process orchestration remain unverified due to environment boundaries.

@@ -23,7 +23,7 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
 6. **External Integrations & Sync Hub**:
    - Dedicated sync hub view showing active connector status, "Sync Catalog Now" trigger, historical sync job run list with status badges, live item progress (processed/failed/total), detailed error summaries, and retry actions.
 7. **Verification & Vertical Slice**:
-   - Full test suite: Go unit/contract tests, Frontend Vitest component tests with 100% RTL/LTR coverage, cross-system vertical slice verification, and full local build/lint/diff audit.
+   - Full test suite: Go unit/contract tests with race detection, Frontend Vitest component tests covering RTL/LTR localization, workspace navigation, and form workflows, contract verification, and local build/lint/diff audit.
 
 ---
 
@@ -108,19 +108,20 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
   - Offer creation and pricing updates
   - Inventory snapshot adjustments and location creation
   - Sync job triggering and status display
-  - RTL/LTR Arabic and English localization rendering
+  - RTL/LTR Arabic and English localization rendering and direction behavior
 
 ---
 
-## Verification Plan
+## Verification Plan & Classification Boundaries
 
-### Automated Tests
+### Automated Tests (Executed & Verified)
 
 1. **Go Toolchain & Backend Suite**:
    ```bash
    gofmt -s -w .
    go vet ./...
    go test -v -race ./...
+   go test ./...
    ```
 
 2. **OpenAPI Generator & Spec Verification**:
@@ -144,3 +145,9 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
 
 5. **Implementation Report**:
    Create `docs/implementation/supplier-store-operations-foundation-report.md`.
+
+### Environment Boundaries (Documented Limitations)
+
+- **Physical S3/MinIO Object Storage**: Presigned upload contracts and workflows are verified via client/BFF tests; physical S3 bucket uploads remain unverified in the local sandbox due to absent cloud storage infrastructure.
+- **External Third-Party Connectors**: Sync Hub UI, job state machines, progress tracking, and retries are verified; live external API execution against third-party platforms (e.g. Salla, Zid, ERP) is unverified.
+- **Cross-Service Live Multi-Process Orchestration**: Core client and Supplier API contracts are verified against in-process HTTP stubs; live cross-process networked orchestration against a live Core daemon with PostgreSQL is unverified in isolated testing.
