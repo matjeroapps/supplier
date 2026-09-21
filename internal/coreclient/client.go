@@ -1,10 +1,10 @@
-// Package coreclient is the Admin repository's own HTTP client for the Core
+// Package coreclient is the Supplier repository's own HTTP client for the Core
 // internal API.
 //
-// It is the runtime half of the Repository Independence Rule (ADR-017): Admin
+// It is the runtime half of the Repository Independence Rule (ADR-017): Supplier
 // reaches every Core-owned business capability over HTTP and imports no Core Go
 // package. All request and response DTOs are owned here, so a Core domain change
-// cannot silently become an Admin public contract change.
+// cannot silently become a Supplier public contract change.
 package coreclient
 
 import (
@@ -38,7 +38,7 @@ const (
 )
 
 // maxResponseBytes bounds every Core response. A misbehaving or compromised Core
-// must not be able to exhaust Seller's memory.
+// must not be able to exhaust Supplier's memory.
 const maxResponseBytes = 8 << 20 // 8 MiB
 
 // defaultTimeout bounds a single Core call. There is no retry: a retry policy
@@ -53,7 +53,7 @@ type Config struct {
 	// Token is this actor's service credential. It is a secret and is never
 	// logged.
 	Token string
-	// Service is the caller name presented to Core, e.g. "seller".
+	// Service is the caller name presented to Core, e.g. "supplier".
 	Service string
 	// Timeout bounds a single request. Defaults to 10s when unset.
 	Timeout time.Duration
@@ -226,7 +226,7 @@ func decodeError(status int, payload []byte) error {
 	return &Error{Status: status, Code: code, Message: envelope.Error.Message}
 }
 
-// propagateCorrelation forwards the Seller request's correlation identifiers so
+// propagateCorrelation forwards the Supplier request's correlation identifiers so
 // a Core log line can be tied back to the originating customer request.
 func (c *Client) propagateCorrelation(ctx context.Context, req *http.Request) {
 	if id := httpx.RequestID(ctx); id != "" {

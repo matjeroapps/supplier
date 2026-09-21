@@ -328,3 +328,84 @@ func (c *Client) ListInventoryMovements(ctx context.Context, supplierID, snapsho
 	err := c.get(ctx, path, page.values(), requestOptions{Subject: subject}, &payload)
 	return payload.Items, err
 }
+
+// --- Affiliated retail capability (ADR-019) ---
+//
+// A supplier may provision an affiliated direct retail channel through Core.
+// The seller record and affiliated stores are governed by Core; this package
+// owns only the wire shapes required for the Supplier gateway to expose them.
+
+// SupplierSellerAffiliation links a supplier to an affiliated seller.
+type SupplierSellerAffiliation struct {
+	SupplierID string `json:"supplier_id"`
+	SellerID   string `json:"seller_id"`
+}
+
+// AffiliatedSeller is the seller profile returned through the retail capability.
+type AffiliatedSeller struct {
+	ID     string `json:"id"`
+	Code   string `json:"code"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+// SupplierRetailCapabilityResponse is returned by GET /retail-capability.
+type SupplierRetailCapabilityResponse struct {
+	Affiliation SupplierSellerAffiliation `json:"affiliation"`
+	Seller      AffiliatedSeller          `json:"seller"`
+}
+
+// SupplierRetailCapabilityRequest is sent to POST /retail-capability.
+type SupplierRetailCapabilityRequest struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// AffiliatedStore is one of the supplier's direct retail stores.
+type AffiliatedStore struct {
+	ID         string `json:"id"`
+	SellerID   string `json:"seller_id"`
+	MarketCode string `json:"market_code"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+}
+
+// SupplierStoreCreateRequest is sent to POST /stores.
+type SupplierStoreCreateRequest struct {
+	MarketCode string `json:"market_code"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+}
+
+// GetSupplierRetailCapability returns the supplier's affiliated retail capability.
+func (c *Client) GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (SupplierRetailCapabilityResponse, error) {
+	var payload SupplierRetailCapabilityResponse
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/retail-capability"
+	err := c.get(ctx, path, nil, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+// CreateSupplierRetailCapability provisions an affiliated seller for the supplier.
+func (c *Client) CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req SupplierRetailCapabilityRequest) (SupplierRetailCapabilityResponse, error) {
+	var payload SupplierRetailCapabilityResponse
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/retail-capability"
+	err := c.post(ctx, path, req, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+// ListSupplierStores lists the direct retail stores affiliated with the supplier.
+func (c *Client) ListSupplierStores(ctx context.Context, supplierID, subject string, page Page) ([]AffiliatedStore, error) {
+	var payload collectionResponse[AffiliatedStore]
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/stores"
+	err := c.get(ctx, path, page.values(), requestOptions{Subject: subject}, &payload)
+	return payload.Items, err
+}
+
+// CreateSupplierStore creates a new direct retail store under the supplier's affiliated seller.
+func (c *Client) CreateSupplierStore(ctx context.Context, supplierID, subject string, req SupplierStoreCreateRequest) (AffiliatedStore, error) {
+	var payload AffiliatedStore
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/stores"
+	err := c.post(ctx, path, req, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
