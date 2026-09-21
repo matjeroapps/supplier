@@ -805,6 +805,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Page size, capped by the service default",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Zero-based offset",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -812,72 +830,60 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "properties": {
-                      "completed_at": {
-                        "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "properties": {
+                          "connection_id": {
+                            "type": "string"
+                          },
+                          "error_summary": {
+                            "type": "string"
+                          },
+                          "failed_items": {
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "processed_items": {
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "supplier_id": {
+                            "type": "string"
+                          },
+                          "total_items": {
+                            "format": "int32",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "connection_id",
+                          "failed_items",
+                          "id",
+                          "processed_items",
+                          "status",
+                          "supplier_id",
+                          "total_items"
+                        ],
+                        "type": "object"
                       },
-                      "connection_id": {
-                        "type": "string"
-                      },
-                      "created_at": {
-                        "format": "date-time",
-                        "type": "string"
-                      },
-                      "error_summary": {
-                        "type": "string"
-                      },
-                      "failed_items": {
-                        "format": "int32",
-                        "type": "integer"
-                      },
-                      "id": {
-                        "type": "string"
-                      },
-                      "processed_items": {
-                        "format": "int32",
-                        "type": "integer"
-                      },
-                      "started_at": {
-                        "format": "date-time",
-                        "nullable": true,
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "supplier_id": {
-                        "type": "string"
-                      },
-                      "total_items": {
-                        "format": "int32",
-                        "type": "integer"
-                      },
-                      "updated_at": {
-                        "format": "date-time",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "connection_id",
-                      "created_at",
-                      "failed_items",
-                      "id",
-                      "processed_items",
-                      "status",
-                      "supplier_id",
-                      "total_items",
-                      "updated_at"
-                    ],
-                    "type": "object"
+                      "type": "array"
+                    }
                   },
-                  "type": "array"
+                  "required": [
+                    "items"
+                  ],
+                  "type": "object"
                 }
               }
             },
-            "description": "Supplier sync jobs collection"
+            "description": "Sync job collection"
           },
           "401": {
             "content": {
@@ -1005,7 +1011,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "List supplier catalog synchronization jobs",
+        "summary": "List catalog import sync jobs",
         "tags": [
           "Integrations"
         ]
@@ -1050,16 +1056,7 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "completed_at": {
-                      "format": "date-time",
-                      "nullable": true,
-                      "type": "string"
-                    },
                     "connection_id": {
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "format": "date-time",
                       "type": "string"
                     },
                     "error_summary": {
@@ -1076,11 +1073,6 @@
                       "format": "int32",
                       "type": "integer"
                     },
-                    "started_at": {
-                      "format": "date-time",
-                      "nullable": true,
-                      "type": "string"
-                    },
                     "status": {
                       "type": "string"
                     },
@@ -1090,28 +1082,22 @@
                     "total_items": {
                       "format": "int32",
                       "type": "integer"
-                    },
-                    "updated_at": {
-                      "format": "date-time",
-                      "type": "string"
                     }
                   },
                   "required": [
                     "connection_id",
-                    "created_at",
                     "failed_items",
                     "id",
                     "processed_items",
                     "status",
                     "supplier_id",
-                    "total_items",
-                    "updated_at"
+                    "total_items"
                   ],
                   "type": "object"
                 }
               }
             },
-            "description": "Sync job triggered"
+            "description": "Sync job created"
           },
           "400": {
             "content": {
@@ -1299,7 +1285,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Trigger a supplier catalog synchronization job",
+        "summary": "Trigger a catalog import sync job",
         "tags": [
           "Integrations"
         ]
@@ -1333,16 +1319,7 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "completed_at": {
-                      "format": "date-time",
-                      "nullable": true,
-                      "type": "string"
-                    },
                     "connection_id": {
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "format": "date-time",
                       "type": "string"
                     },
                     "error_summary": {
@@ -1359,11 +1336,6 @@
                       "format": "int32",
                       "type": "integer"
                     },
-                    "started_at": {
-                      "format": "date-time",
-                      "nullable": true,
-                      "type": "string"
-                    },
                     "status": {
                       "type": "string"
                     },
@@ -1373,28 +1345,22 @@
                     "total_items": {
                       "format": "int32",
                       "type": "integer"
-                    },
-                    "updated_at": {
-                      "format": "date-time",
-                      "type": "string"
                     }
                   },
                   "required": [
                     "connection_id",
-                    "created_at",
                     "failed_items",
                     "id",
                     "processed_items",
                     "status",
                     "supplier_id",
-                    "total_items",
-                    "updated_at"
+                    "total_items"
                   ],
                   "type": "object"
                 }
               }
             },
-            "description": "Supplier sync job"
+            "description": "Sync job"
           },
           "401": {
             "content": {
@@ -1522,7 +1488,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Get a supplier catalog synchronization job",
+        "summary": "Get a single sync job",
         "tags": [
           "Integrations"
         ]
@@ -5195,7 +5161,7 @@
     },
     "/v1/supplier/retail-capability": {
       "get": {
-        "operationId": "getSupplierRetailCapability",
+        "operationId": "getRetailCapability",
         "parameters": [
           {
             "description": "Override locale resolution",
@@ -5214,10 +5180,6 @@
                   "properties": {
                     "affiliation": {
                       "properties": {
-                        "created_at": {
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "seller_id": {
                           "type": "string"
                         },
@@ -5226,7 +5188,6 @@
                         }
                       },
                       "required": [
-                        "created_at",
                         "seller_id",
                         "supplier_id"
                       ],
@@ -5237,10 +5198,6 @@
                         "code": {
                           "type": "string"
                         },
-                        "created_at": {
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "type": "string"
                         },
@@ -5249,19 +5206,13 @@
                         },
                         "status": {
                           "type": "string"
-                        },
-                        "updated_at": {
-                          "format": "date-time",
-                          "type": "string"
                         }
                       },
                       "required": [
                         "code",
-                        "created_at",
                         "id",
                         "name",
-                        "status",
-                        "updated_at"
+                        "status"
                       ],
                       "type": "object"
                     }
@@ -5274,7 +5225,7 @@
                 }
               }
             },
-            "description": "Supplier retail capability"
+            "description": "Retail capability"
           },
           "401": {
             "content": {
@@ -5402,13 +5353,13 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Get supplier affiliated retail seller capability",
+        "summary": "Get the supplier's affiliated retail capability",
         "tags": [
-          "Retail"
+          "Retail Capability"
         ]
       },
       "post": {
-        "operationId": "createSupplierRetailCapability",
+        "operationId": "createRetailCapability",
         "parameters": [
           {
             "description": "Override locale resolution",
@@ -5429,16 +5380,11 @@
                   },
                   "name": {
                     "type": "string"
-                  },
-                  "settings": {
-                    "additionalProperties": true,
-                    "type": "object"
                   }
                 },
                 "required": [
                   "code",
-                  "name",
-                  "settings"
+                  "name"
                 ],
                 "type": "object"
               }
@@ -5454,10 +5400,6 @@
                   "properties": {
                     "affiliation": {
                       "properties": {
-                        "created_at": {
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "seller_id": {
                           "type": "string"
                         },
@@ -5466,7 +5408,6 @@
                         }
                       },
                       "required": [
-                        "created_at",
                         "seller_id",
                         "supplier_id"
                       ],
@@ -5477,10 +5418,6 @@
                         "code": {
                           "type": "string"
                         },
-                        "created_at": {
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "type": "string"
                         },
@@ -5489,19 +5426,13 @@
                         },
                         "status": {
                           "type": "string"
-                        },
-                        "updated_at": {
-                          "format": "date-time",
-                          "type": "string"
                         }
                       },
                       "required": [
                         "code",
-                        "created_at",
                         "id",
                         "name",
-                        "status",
-                        "updated_at"
+                        "status"
                       ],
                       "type": "object"
                     }
@@ -5514,7 +5445,7 @@
                 }
               }
             },
-            "description": "Supplier retail capability provisioned"
+            "description": "Retail capability provisioned"
           },
           "400": {
             "content": {
@@ -5702,9 +5633,9 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Provision supplier affiliated retail seller capability",
+        "summary": "Provision an affiliated retail seller",
         "tags": [
-          "Retail"
+          "Retail Capability"
         ]
       }
     },
@@ -5751,39 +5682,17 @@
                           "code": {
                             "type": "string"
                           },
-                          "created_at": {
-                            "format": "date-time",
-                            "type": "string"
-                          },
-                          "id": {
-                            "type": "string"
-                          },
                           "market_code": {
                             "type": "string"
                           },
                           "name": {
                             "type": "string"
-                          },
-                          "seller_id": {
-                            "type": "string"
-                          },
-                          "status": {
-                            "type": "string"
-                          },
-                          "updated_at": {
-                            "format": "date-time",
-                            "type": "string"
                           }
                         },
                         "required": [
                           "code",
-                          "created_at",
-                          "id",
                           "market_code",
-                          "name",
-                          "seller_id",
-                          "status",
-                          "updated_at"
+                          "name"
                         ],
                         "type": "object"
                       },
@@ -5797,7 +5706,7 @@
                 }
               }
             },
-            "description": "Supplier retail store collection"
+            "description": "Affiliated store collection"
           },
           "401": {
             "content": {
@@ -5925,10 +5834,9 @@
             "bearerAuth": []
           }
         ],
-        "summary": "List stores owned by the supplier's affiliated retail seller",
+        "summary": "List the supplier's affiliated retail stores",
         "tags": [
-          "Retail",
-          "Stores"
+          "Retail Capability"
         ]
       },
       "post": {
@@ -5956,21 +5864,12 @@
                   },
                   "name": {
                     "type": "string"
-                  },
-                  "settings": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "status": {
-                    "type": "string"
                   }
                 },
                 "required": [
                   "code",
                   "market_code",
-                  "name",
-                  "settings",
-                  "status"
+                  "name"
                 ],
                 "type": "object"
               }
@@ -5987,45 +5886,23 @@
                     "code": {
                       "type": "string"
                     },
-                    "created_at": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "id": {
-                      "type": "string"
-                    },
                     "market_code": {
                       "type": "string"
                     },
                     "name": {
                       "type": "string"
-                    },
-                    "seller_id": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    },
-                    "updated_at": {
-                      "format": "date-time",
-                      "type": "string"
                     }
                   },
                   "required": [
                     "code",
-                    "created_at",
-                    "id",
                     "market_code",
-                    "name",
-                    "seller_id",
-                    "status",
-                    "updated_at"
+                    "name"
                   ],
                   "type": "object"
                 }
               }
             },
-            "description": "Supplier retail store created"
+            "description": "Store created"
           },
           "400": {
             "content": {
@@ -6213,10 +6090,9 @@
             "bearerAuth": []
           }
         ],
-        "summary": "Create a retail store for the supplier's affiliated retail seller",
+        "summary": "Create an affiliated retail store",
         "tags": [
-          "Retail",
-          "Stores"
+          "Retail Capability"
         ]
       }
     }

@@ -1,275 +1,405 @@
 export const locales = ['ar', 'en'] as const;
 export type Locale = (typeof locales)[number];
 
-export const messages = {
+export const messages: Record<Locale, {
+  appName: string;
+  nav: {
+    dashboard: string;
+    products: string;
+    offers: string;
+    inventory: string;
+    locations: string;
+    integrations: string;
+    retail: string;
+    settings: string;
+  };
+  kpi: {
+    totalProducts: string;
+    activeOffers: string;
+    pendingSync: string;
+    totalLocations: string;
+  };
+  products: {
+    title: string;
+    addProduct: string;
+    slug: string;
+    supplierCode: string;
+    status: string;
+    nameEn: string;
+    nameAr: string;
+    descriptionEn: string;
+    descriptionAr: string;
+    categories: string;
+    skuCodeLabel: string;
+    barcodeLabel: string;
+    variantsSection: string;
+    mediaSection: string;
+    addMedia: string;
+    primaryImage: string;
+    deleteMedia: string;
+    setPrimary: string;
+    save: string;
+    cancel: string;
+  };
+  offers: {
+    title: string;
+    addOffer: string;
+    productId: string;
+    marketId: string;
+    marketCode: string;
+    wholesalePrice: string;
+    currency: string;
+    moq: string;
+    status: string;
+    save: string;
+    cancel: string;
+    minOrderQty: string;
+  };
+  inventory: {
+    title: string;
+    snapshotsTab: string;
+    movementsTab: string;
+    locationsTab: string;
+    locationId: string;
+    skuId: string;
+    onHand: string;
+    reserved: string;
+    adjustStock: string;
+    deltaQty: string;
+    reason: string;
+    movementType: string;
+    confirmAdjustment: string;
+    cancel: string;
+    movementTypes: {
+      adjustment: string;
+      receipt: string;
+      shipment: string;
+      return: string;
+    };
+  };
+  locations: {
+    title: string;
+    addLocation: string;
+    marketId: string;
+    marketCode: string;
+    code: string;
+    name: string;
+    locationType: string;
+    status: string;
+    save: string;
+    cancel: string;
+  };
+  integrations: {
+    title: string;
+    triggerSync: string;
+    jobId: string;
+    connectionId: string;
+    status: string;
+    processedItems: string;
+    failedItems: string;
+    totalItems: string;
+    retryJob: string;
+    errorSummary: string;
+    noJobs: string;
+  };
+  retail: {
+    title: string;
+    statusProvisioned: string;
+    notProvisioned: string;
+    provisionBtn: string;
+    createStoreBtn: string;
+    storeCode: string;
+    storeName: string;
+    marketCode: string;
+    save: string;
+    cancel: string;
+    storesList: string;
+  };
+  settings: {
+    title: string;
+    supplierName: string;
+    status: string;
+    advancedSettings: string;
+    save: string;
+  };
+  common: {
+    loading: string;
+    error: string;
+    retry: string;
+    save: string;
+    cancel: string;
+    active: string;
+    inactive: string;
+    noData: string;
+    success: string;
+  };
+}> = {
   ar: {
-    appName: 'لوحة تحكم المورد',
-    appSubtitle: 'عمليات التوريد بالجملة وإدارة الكتالوج والمخزون',
-    status: 'جاهز للعمل',
+    appName: 'بوابة المورد | ماتجر',
     nav: {
-      dashboard: 'لوحة القيادة',
-      products: 'المنتجات والكتالوج',
-      offers: 'عروض السوق',
+      dashboard: 'لوحة التحكم',
+      products: 'المنتجات',
+      offers: 'العروض',
       inventory: 'المخزون',
-      locations: 'مواقع الاستيفاء',
-      integrations: 'الربط والمزامنة',
-      retail: 'المتجر الملحق',
-      settings: 'الإعدادات'
+      locations: 'المواقع',
+      integrations: 'التكاملات',
+      retail: 'قناة البيع المباشر',
+      settings: 'الإعدادات',
     },
     kpi: {
       totalProducts: 'إجمالي المنتجات',
       activeOffers: 'العروض النشطة',
-      totalStock: 'إجمالي المخزون',
-      syncJobs: 'عمليات المزامنة'
+      pendingSync: 'مزامنة معلقة',
+      totalLocations: 'إجمالي المواقع',
     },
     products: {
-      title: 'كتالوج منتجات المورد',
-      subtitle: 'إدارة منتجات الجملة والخيارات والصور والمتغيرات',
-      addProduct: 'إضافة منتج جديد',
-      searchPlaceholder: 'البحث عن منتج بالاسم أو الرمز...',
-      noProducts: 'لا توجد منتجات مسجلة حالياً',
-      tableSlug: 'المعرف اللطيف (Slug)',
-      tableSupplierCode: 'رمز المورد',
-      tableStatus: 'الحالة',
-      tableActions: 'الإجراءات',
-      statusActive: 'نشط',
-      statusDraft: 'مسودة',
-      statusArchived: 'مؤرشف',
-      modalTitle: 'إنشاء منتج مورد جديد',
-      slugLabel: 'المعرف الفريد للمنتج (Slug)',
-      codeLabel: 'رمز المنتج لدى المورد (Supplier Code)',
-      nameArLabel: 'اسم المنتج (بالعربية)',
-      descArLabel: 'وصف المنتج (بالعربية)',
-      nameEnLabel: 'اسم المنتج (بالإنجليزية)',
-      descEnLabel: 'وصف المنتج (بالإنجليزية)',
-      categoriesLabel: 'معرفات التصنيفات (مفصولة بفواصل)',
-      variantOptionsLabel: 'خيارات المتغيرات (مثال: الحجم، اللون)',
-      skuCodeLabel: 'رمز وحدة التخزين (SKU Code)',
-      barcodeLabel: 'الباركود (Barcode)',
-      initialStockLabel: 'المخزون الأولي',
-      saveProduct: 'حفظ ونشر المنتج',
-      variantsSection: 'المتغيرات ووحدات SKU',
-      mediaSection: 'معرض صور المنتج (Presigned S3)',
-      addMedia: 'رفع صورة جديدة',
-      primaryImage: 'الصورة الرئيسية'
-    },
-    offers: {
-      title: 'عروض الجملة في الأسواق',
-      subtitle: 'نشر عروض المنتجات للمتاجر مع تحديد أسعار الجملة والحد الأدنى للطلب',
-      addOffer: 'إنشاء عرض جديد',
-      noOffers: 'لا توجد عروض سوق نشطة حالياً',
-      marketCode: 'السوق',
-      wholesalePrice: 'سعر الجملة',
-      status: 'حالة العرض',
-      availableQty: 'الكمية المتاحة',
-      moq: 'الحد الأدنى للطلب (MOQ)',
-      isAvailable: 'متاح للطلب',
-      modalTitle: 'إنشاء عرض سوق جديد',
-      selectProduct: 'اختر المنتج',
-      selectMarket: 'اختر السوق المستهدف',
-      priceAmount: 'المبلغ (بالوحدات الصغرى / Minor Units)',
-      currency: 'العملة',
-      saveOffer: 'نشر العرض في سوق المتاجر'
-    },
-    inventory: {
-      title: 'المخزون ومواقع الاستيفاء',
-      subtitle: 'تتبع كميات المخزون المتوفرة والمحجوزة وتسجيل حركات التسوية بدقة',
-      locationsTab: 'مواقع الاستيفاء',
-      snapshotsTab: 'أرصدة المخزون',
-      movementsTab: 'سجل حركات المخزون',
-      addLocation: 'إضافة موقع استيفاء',
-      adjustStock: 'تسوية رصيد المخزون',
-      locationCode: 'رمز الموقع',
-      locationName: 'اسم الموقع',
-      locationType: 'نوع الموقع (warehouse / store)',
-      onHandQty: 'الكمية الفعلية بالمستودع',
-      reservedQty: 'الكمية المحجوزة للطلبات',
-      availableQty: 'الكمية الصافية المتاحة',
-      movementType: 'نوع الحركة (adjustment / restock / damage)',
-      deltaQty: 'مقدار التغيير (موجب أو سالب)',
-      reason: 'سبب التسوية',
-      confirmAdjustment: 'تطبيق التسوية وتسجيل الحركة'
-    },
-    integrations: {
-      title: 'الربط الخارجي والمزامنة التلقائية',
-      subtitle: 'مزامنة الكتالوج والأسعار والمخزون مع منصات التجارة الإلكترونية الخارجية',
-      triggerSync: 'بدء مزامنة فورية للكتالوج',
-      connectorsTitle: 'القنوات المتصلة',
-      recentJobs: 'سجل عمليات المزامنة الأخيرة',
-      jobId: 'معرف المهمة',
-      connector: 'القناة',
-      jobStatus: 'الحالة',
-      processedItems: 'العناصر المنجزة',
-      failedItems: 'العناصر المتعثرة',
-      totalItems: 'الإجمالي',
-      retryJob: 'إعادة المحاولة',
-      errorSummary: 'تفاصيل الخطأ'
-    },
-    retail: {
-      title: 'القدرة البيعية بالتجزئة للمورد (ADR-019)',
-      subtitle: 'إمكانية تشغيل متجر تجزئة مباشر وربطه مع هوية المورد المؤسسية',
-      statusProvisioned: 'تم تفعيل المتجر المباشر',
-      statusNotProvisioned: 'لم يتم تفعيل المتجر المباشر بعد',
-      provisionBtn: 'تفعيل إمكانية بيع التجزئة وإنشاء حساب متجر',
-      storeCode: 'رمز المتجر المباشر',
-      storeName: 'اسم المتجر المباشر',
-      affiliatedSeller: 'حساب البائع التابع',
-      createStoreBtn: 'إنشاء متجر تجزئة جديد'
-    },
-    settings: {
-      title: 'إعدادات حساب المورد',
-      subtitle: 'البيانات المؤسسية وإعدادات النظام والتفضيلات',
-      supplierName: 'اسم المورد التجاري',
-      supplierStatus: 'حالة الحساب',
-      settingsJson: 'إعدادات الحساب (JSON)',
-      saveSettings: 'حفظ التعديلات'
-    },
-    common: {
+      title: 'المنتجات',
+      addProduct: 'إضافة منتج',
+      slug: 'المعرف الفريد',
+      supplierCode: 'كود المورد',
+      status: 'الحالة',
+      nameEn: 'الاسم (إنجليزي)',
+      nameAr: 'الاسم (عربي)',
+      descriptionEn: 'الوصف (إنجليزي)',
+      descriptionAr: 'الوصف (عربي)',
+      categories: 'الفئات',
+      skuCodeLabel: 'كود SKU',
+      barcodeLabel: 'الباركود',
+      variantsSection: 'المتغيرات / SKU',
+      mediaSection: 'معرض الصور',
+      addMedia: 'رفع صورة',
+      primaryImage: 'الصورة الرئيسية',
+      deleteMedia: 'حذف الصورة',
+      setPrimary: 'تعيين كرئيسية',
       save: 'حفظ',
       cancel: 'إلغاء',
-      close: 'إغلاق',
+    },
+    offers: {
+      title: 'العروض',
+      addOffer: 'إضافة عرض',
+      productId: 'معرف المنتج',
+      marketId: 'معرف السوق',
+      marketCode: 'كود السوق',
+      wholesalePrice: 'السعر بالجملة',
+      currency: 'العملة',
+      moq: 'الحد الأدنى للطلب',
+      status: 'الحالة',
+      save: 'حفظ',
+      cancel: 'إلغاء',
+      minOrderQty: 'الحد الأدنى للكمية',
+    },
+    inventory: {
+      title: 'المخزون',
+      snapshotsTab: 'لقطات المخزون',
+      movementsTab: 'حركات المخزون',
+      locationsTab: 'المواقع',
+      locationId: 'معرف الموقع',
+      skuId: 'معرف SKU',
+      onHand: 'الكمية المتاحة',
+      reserved: 'الكمية المحجوزة',
+      adjustStock: 'تعديل المخزون',
+      deltaQty: 'كمية التعديل',
+      reason: 'السبب',
+      movementType: 'نوع الحركة',
+      confirmAdjustment: 'تأكيد التعديل',
+      cancel: 'إلغاء',
+      movementTypes: {
+        adjustment: 'تعديل',
+        receipt: 'استلام',
+        shipment: 'شحن',
+        return: 'إرجاع',
+      },
+    },
+    locations: {
+      title: 'مواقع التخزين',
+      addLocation: 'إضافة موقع',
+      marketId: 'معرف السوق',
+      marketCode: 'كود السوق',
+      code: 'الكود',
+      name: 'الاسم',
+      locationType: 'نوع الموقع',
+      status: 'الحالة',
+      save: 'حفظ',
+      cancel: 'إلغاء',
+    },
+    integrations: {
+      title: 'التكاملات ومزامنة الكتالوج',
+      triggerSync: 'تشغيل مزامنة الكتالوج',
+      jobId: 'معرف المهمة',
+      connectionId: 'معرف الاتصال',
+      status: 'الحالة',
+      processedItems: 'البنود المعالجة',
+      failedItems: 'البنود الفاشلة',
+      totalItems: 'إجمالي البنود',
+      retryJob: 'إعادة المحاولة',
+      errorSummary: 'ملخص الأخطاء',
+      noJobs: 'لا توجد مهام مزامنة بعد',
+    },
+    retail: {
+      title: 'قناة البيع المباشر',
+      statusProvisioned: 'تم التفعيل',
+      notProvisioned: 'غير مفعل',
+      provisionBtn: 'تفعيل قناة البيع المباشر',
+      createStoreBtn: 'إنشاء متجر',
+      storeCode: 'كود المتجر',
+      storeName: 'اسم المتجر',
+      marketCode: 'كود السوق',
+      save: 'حفظ',
+      cancel: 'إلغاء',
+      storesList: 'المتاجر المرتبطة',
+    },
+    settings: {
+      title: 'إعدادات المورد',
+      supplierName: 'اسم المورد',
+      status: 'الحالة',
+      advancedSettings: 'إعدادات متقدمة (JSON)',
+      save: 'حفظ الإعدادات',
+    },
+    common: {
       loading: 'جاري التحميل...',
-      error: 'حدث خطأ غير متوقع',
-      success: 'تمت العملية بنجاح',
-      actions: 'خيارات',
+      error: 'خطأ',
+      retry: 'إعادة المحاولة',
+      save: 'حفظ',
+      cancel: 'إلغاء',
       active: 'نشط',
-      inactive: 'غير نشط'
-    }
+      inactive: 'غير نشط',
+      noData: 'لا توجد بيانات',
+      success: 'تمت العملية بنجاح',
+    },
   },
   en: {
-    appName: 'Supplier Portal',
-    appSubtitle: 'Wholesale Supply Operations, Catalog & Inventory Management',
-    status: 'Operational',
+    appName: 'Supplier Portal | MatjerHub',
     nav: {
       dashboard: 'Dashboard',
-      products: 'Products & Catalog',
+      products: 'Products',
       offers: 'Market Offers',
       inventory: 'Inventory',
-      locations: 'Fulfillment Locations',
-      integrations: 'Integrations & Sync',
-      retail: 'Affiliated Retail Store',
-      settings: 'Settings & Profile'
+      locations: 'Locations',
+      integrations: 'Integrations',
+      retail: 'Direct Retail',
+      settings: 'Settings',
     },
     kpi: {
       totalProducts: 'Total Products',
       activeOffers: 'Active Offers',
-      totalStock: 'Total Stock',
-      syncJobs: 'Sync Executions'
+      pendingSync: 'Pending Sync',
+      totalLocations: 'Total Locations',
     },
     products: {
-      title: 'Wholesale Supplier Catalog',
-      subtitle: 'Manage wholesale products, options, media galleries, and SKU variants',
-      addProduct: 'Add New Product',
-      searchPlaceholder: 'Search products by name, code or slug...',
-      noProducts: 'No products recorded in catalog yet',
-      tableSlug: 'Slug',
-      tableSupplierCode: 'Supplier Code',
-      tableStatus: 'Status',
-      tableActions: 'Actions',
-      statusActive: 'Active',
-      statusDraft: 'Draft',
-      statusArchived: 'Archived',
-      modalTitle: 'Create Supplier Product',
-      slugLabel: 'Product Slug (Unique URI Identifier)',
-      codeLabel: 'Supplier Internal Code',
-      nameArLabel: 'Product Name (Arabic)',
-      descArLabel: 'Product Description (Arabic)',
-      nameEnLabel: 'Product Name (English)',
-      descEnLabel: 'Product Description (English)',
-      categoriesLabel: 'Category IDs (comma-separated)',
-      variantOptionsLabel: 'Variant Option Axes (e.g. Size, Color)',
-      skuCodeLabel: 'Primary SKU Code',
-      barcodeLabel: 'Barcode / EAN',
-      initialStockLabel: 'Initial On-Hand Quantity',
-      saveProduct: 'Save & Publish Product',
-      variantsSection: 'Variants & SKU Management',
-      mediaSection: 'Product Media Gallery (Presigned S3)',
-      addMedia: 'Upload Media Asset',
-      primaryImage: 'Primary Image'
-    },
-    offers: {
-      title: 'Wholesale Market Offers',
-      subtitle: 'Publish wholesale product offers for Seller Store discovery and import',
-      addOffer: 'Create Market Offer',
-      noOffers: 'No market offers published yet',
-      marketCode: 'Target Market',
-      wholesalePrice: 'Wholesale Cost Price',
-      status: 'Offer Status',
-      availableQty: 'Available Stock',
-      moq: 'Min Order Qty (MOQ)',
-      isAvailable: 'Orderable',
-      modalTitle: 'Create Market Offer',
-      selectProduct: 'Select Wholesale Product',
-      selectMarket: 'Select Target Market',
-      priceAmount: 'Cost Price Minor Units (e.g. 15000 = 150.00)',
-      currency: 'Currency Code',
-      saveOffer: 'Publish Market Offer'
-    },
-    inventory: {
-      title: 'Fulfillment & Stock Inventory',
-      subtitle: 'Track real-time stock positions and record auditable stock adjustments',
-      locationsTab: 'Fulfillment Locations',
-      snapshotsTab: 'Stock Snapshots',
-      movementsTab: 'Stock Movements Audit',
-      addLocation: 'Add Location',
-      adjustStock: 'Adjust Stock Balance',
-      locationCode: 'Location Code',
-      locationName: 'Location Name',
-      locationType: 'Location Type (warehouse / store)',
-      onHandQty: 'On-Hand Physical Stock',
-      reservedQty: 'Reserved Stock',
-      availableQty: 'Available Net Stock',
-      movementType: 'Movement Type (adjustment / restock / damage)',
-      deltaQty: 'Quantity Delta (+ / -)',
-      reason: 'Adjustment Reason',
-      confirmAdjustment: 'Post Inventory Movement'
-    },
-    integrations: {
-      title: 'External Channels & Sync Hub',
-      subtitle: 'Synchronize catalog feeds, wholesale pricing and stock from external platforms',
-      triggerSync: 'Trigger Live Catalog Sync',
-      connectorsTitle: 'Connected Channels',
-      recentJobs: 'Recent Synchronization Jobs',
-      jobId: 'Job ID',
-      connector: 'Channel Connector',
-      jobStatus: 'Status',
-      processedItems: 'Processed Items',
-      failedItems: 'Failed Items',
-      totalItems: 'Total Items',
-      retryJob: 'Retry Job',
-      errorSummary: 'Error Diagnostics'
-    },
-    retail: {
-      title: 'Supplier Retail Capability (ADR-019)',
-      subtitle: 'Direct-to-consumer store operations affiliated with this supplier account',
-      statusProvisioned: 'Retail Store Capability Active',
-      statusNotProvisioned: 'Retail Store Capability Not Provisioned',
-      provisionBtn: 'Provision Direct Retail Store Capability',
-      storeCode: 'Store Code',
-      storeName: 'Store Name',
-      affiliatedSeller: 'Affiliated Seller Profile',
-      createStoreBtn: 'Create New Retail Store'
-    },
-    settings: {
-      title: 'Supplier Account Settings',
-      subtitle: 'Profile details, operational settings, and metadata',
-      supplierName: 'Supplier Legal Name',
-      supplierStatus: 'Account Status',
-      settingsJson: 'Configuration Settings (JSON)',
-      saveSettings: 'Save Changes'
-    },
-    common: {
+      title: 'Products',
+      addProduct: 'Add Product',
+      slug: 'Slug',
+      supplierCode: 'Supplier Code',
+      status: 'Status',
+      nameEn: 'Name (English)',
+      nameAr: 'Name (Arabic)',
+      descriptionEn: 'Description (English)',
+      descriptionAr: 'Description (Arabic)',
+      categories: 'Categories',
+      skuCodeLabel: 'SKU Code',
+      barcodeLabel: 'Barcode',
+      variantsSection: 'Variants / SKU',
+      mediaSection: 'Media Gallery',
+      addMedia: 'Upload Image',
+      primaryImage: 'Primary Image',
+      deleteMedia: 'Delete Image',
+      setPrimary: 'Set as Primary',
       save: 'Save',
       cancel: 'Cancel',
-      close: 'Close',
+    },
+    offers: {
+      title: 'Market Offers',
+      addOffer: 'Add Offer',
+      productId: 'Product ID',
+      marketId: 'Market ID',
+      marketCode: 'Market Code',
+      wholesalePrice: 'Wholesale Price',
+      currency: 'Currency',
+      moq: 'Minimum Order Quantity',
+      status: 'Status',
+      save: 'Save',
+      cancel: 'Cancel',
+      minOrderQty: 'Min Order Qty',
+    },
+    inventory: {
+      title: 'Inventory',
+      snapshotsTab: 'Snapshots',
+      movementsTab: 'Movement History',
+      locationsTab: 'Locations',
+      locationId: 'Location ID',
+      skuId: 'SKU ID',
+      onHand: 'On Hand',
+      reserved: 'Reserved',
+      adjustStock: 'Adjust Stock',
+      deltaQty: 'Quantity Delta',
+      reason: 'Reason',
+      movementType: 'Movement Type',
+      confirmAdjustment: 'Confirm Adjustment',
+      cancel: 'Cancel',
+      movementTypes: {
+        adjustment: 'Adjustment',
+        receipt: 'Receipt',
+        shipment: 'Shipment',
+        return: 'Return',
+      },
+    },
+    locations: {
+      title: 'Fulfillment Locations',
+      addLocation: 'Add Location',
+      marketId: 'Market ID',
+      marketCode: 'Market Code',
+      code: 'Code',
+      name: 'Name',
+      locationType: 'Location Type',
+      status: 'Status',
+      save: 'Save',
+      cancel: 'Cancel',
+    },
+    integrations: {
+      title: 'Integrations & Catalog Sync',
+      triggerSync: 'Trigger Catalog Import Sync',
+      jobId: 'Job ID',
+      connectionId: 'Connection ID',
+      status: 'Status',
+      processedItems: 'Processed',
+      failedItems: 'Failed',
+      totalItems: 'Total',
+      retryJob: 'Retry',
+      errorSummary: 'Error Summary',
+      noJobs: 'No sync jobs yet',
+    },
+    retail: {
+      title: 'Direct Retail Channel',
+      statusProvisioned: 'Provisioned',
+      notProvisioned: 'Not Provisioned',
+      provisionBtn: 'Provision Retail Channel',
+      createStoreBtn: 'Create Store',
+      storeCode: 'Store Code',
+      storeName: 'Store Name',
+      marketCode: 'Market Code',
+      save: 'Save',
+      cancel: 'Cancel',
+      storesList: 'Affiliated Stores',
+    },
+    settings: {
+      title: 'Supplier Settings',
+      supplierName: 'Supplier Name',
+      status: 'Status',
+      advancedSettings: 'Advanced Settings (JSON)',
+      save: 'Save Settings',
+    },
+    common: {
       loading: 'Loading...',
-      error: 'An unexpected error occurred',
-      success: 'Operation completed successfully',
-      actions: 'Actions',
+      error: 'Error',
+      retry: 'Retry',
+      save: 'Save',
+      cancel: 'Cancel',
       active: 'Active',
-      inactive: 'Inactive'
-    }
-  }
+      inactive: 'Inactive',
+      noData: 'No data available',
+      success: 'Operation completed successfully',
+    },
+  },
 };
 
 export function directionFor(locale: Locale): 'rtl' | 'ltr' {

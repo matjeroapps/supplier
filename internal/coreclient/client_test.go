@@ -19,8 +19,8 @@ import (
 // Repository Independence Rule.
 
 const (
-	testToken   = "seller-service-token"
-	testService = "seller"
+	testToken   = "supplier-service-token"
+	testService = "supplier"
 )
 
 // stubCore is a local stand-in for the Core internal API.
@@ -345,7 +345,7 @@ func TestClientRejectsMalformedSuccessBody(t *testing.T) {
 	}
 }
 
-// A hostile or broken Core must not be able to exhaust Seller's memory.
+// A hostile or broken Core must not be able to exhaust Supplier's memory.
 func TestClientBoundsResponseSize(t *testing.T) {
 	stub := newStubCore(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -464,34 +464,154 @@ func TestClientForwardsLocale(t *testing.T) {
 	}
 }
 
-func TestClientSupplierRetailCapability(t *testing.T) {
-	stub := newStubCore(t, jsonHandler(200, `{"affiliation":{"supplier_id":"sup_123","seller_id":"sel_123"},"seller":{"id":"sel_123","code":"store1","name":"Store 1","status":"active"}}`))
-	client := stub.client(t)
+// --- affiliated retail capability tests ---
 
-	res, err := client.GetSupplierRetailCapability(context.Background(), "sup_123", "sub_123")
+func TestClientGetSupplierRetailCapability(t *testing.T) {
+	want := SupplierRetailCapabilityResponse{
+		Affiliation: SupplierSellerAffiliation{SupplierID: "sup-1", SellerID: "sel-1"},
+		Seller:      AffiliatedSeller{ID: "sel-1", Code: "store1", Name: "Direct Store", Status: "active"},
+	}
+	stub := newStubCore(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/internal/v1/suppliers/sup-1/retail-capability" {
+			t.Errorf("path = %q, want /internal/v1/suppliers/sup-1/retail-capability", r.URL.Path)
+		}
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(want); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	})
+	client := stub.client(t)
+	got, err := client.GetSupplierRetailCapability(context.Background(), "sup-1", "sub-x")
 	if err != nil {
 		t.Fatalf("GetSupplierRetailCapability: %v", err)
 	}
-	if res.Seller.ID != "sel_123" || res.Affiliation.SupplierID != "sup_123" {
-		t.Errorf("unexpected response: %+v", res)
+	if got.Affiliation.SellerID != want.Affiliation.SellerID {
+		t.Errorf("seller_id = %q, want %q", got.Affiliation.SellerID, want.Affiliation.SellerID)
 	}
-	if stub.last.URL.Path != "/internal/v1/suppliers/sup_123/retail-capability" {
-		t.Errorf("path = %q", stub.last.URL.Path)
+	if got.Seller.Name != want.Seller.Name {
+		t.Errorf("seller.name = %q, want %q", got.Seller.Name, want.Seller.Name)
 	}
 }
 
-func TestClientSupplierStores(t *testing.T) {
-	stub := newStubCore(t, jsonHandler(200, `{"items":[{"id":"str_123","seller_id":"sel_123","market_code":"EG","code":"mystore","name":"My Store","status":"active"}]}`))
+func TestClientCreateSupplierRetailCapability(t *testing.T) {
+	want := SupplierRetailCapabilityResponse{
+		Affiliation: SupplierSellerAffiliation{SupplierID: "sup-1", SellerID: "sel-new"},
+		Seller:      AffiliatedSeller{ID: "sel-new", Code: "new-store", Name: "New Store", Status: "active"},
+	}
+	stub := newStubCore(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/internal/v1/suppliers/sup-1/retail-capability" {
+			t.Errorf("path = %q, want /internal/v1/suppliers/sup-1/retail-capability", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %q, want POST", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(want); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	})
 	client := stub.client(t)
+	req := SupplierRetailCapabilityRequest{Code: "new-store", Name: "New Store"}
+	got, err := client.CreateSupplierRetailCapability(context.Background(), "sup-1", "sub-x", req)
+	if err != nil {
+		t.Fatalf("CreateSupplierRetailCapability: %v", err)
+	}
+	// Verify the body the client sent (outer handler captured it in stub.lastBody before our handler ran).
+	var sentBody SupplierRetailCapabilityRequest
+	if err := json.Unmarshal(stub.lastBody, &sentBody); err != nil {
+		t.Fatalf("decode captured request body: %v", err)
+	}
+	if sentBody.Code != req.Code {
+		t.Errorf("request code = %q, want %q", sentBody.Code, req.Code)
+	}
+	if got.Seller.ID != want.Seller.ID {
+		t.Errorf("seller.id = %q, want %q", got.Seller.ID, want.Seller.ID)
+	}
+}
 
-	stores, err := client.ListSupplierStores(context.Background(), "sup_123", "sub_123", Page{})
+func TestClientListSupplierStores(t *testing.T) {
+	want := []AffiliatedStore{
+		{ID: "str-1", SellerID: "sel-1", MarketCode: "EG", Code: "cairo-store", Name: "Cairo Store", Status: "active"},
+	}
+	stub := newStubCore(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/internal/v1/suppliers/sup-1/stores" {
+			t.Errorf("path = %q, want /internal/v1/suppliers/sup-1/stores", r.URL.Path)
+		}
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{"items": want}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	})
+	client := stub.client(t)
+	got, err := client.ListSupplierStores(context.Background(), "sup-1", "sub-x", Page{})
 	if err != nil {
 		t.Fatalf("ListSupplierStores: %v", err)
 	}
-	if len(stores) != 1 || stores[0].ID != "str_123" {
-		t.Errorf("unexpected stores: %+v", stores)
+	if len(got) != 1 {
+		t.Fatalf("len(stores) = %d, want 1", len(got))
 	}
-	if stub.last.URL.Path != "/internal/v1/suppliers/sup_123/stores" {
-		t.Errorf("path = %q", stub.last.URL.Path)
+	if got[0].Code != want[0].Code {
+		t.Errorf("store.code = %q, want %q", got[0].Code, want[0].Code)
+	}
+}
+
+func TestClientCreateSupplierStore(t *testing.T) {
+	want := AffiliatedStore{ID: "str-2", SellerID: "sel-1", MarketCode: "SA", Code: "riyadh-store", Name: "Riyadh Store", Status: "active"}
+	stub := newStubCore(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/internal/v1/suppliers/sup-1/stores" {
+			t.Errorf("path = %q, want /internal/v1/suppliers/sup-1/stores", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %q, want POST", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(want); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	})
+	client := stub.client(t)
+	req := SupplierStoreCreateRequest{MarketCode: "SA", Code: "riyadh-store", Name: "Riyadh Store"}
+	got, err := client.CreateSupplierStore(context.Background(), "sup-1", "sub-x", req)
+	if err != nil {
+		t.Fatalf("CreateSupplierStore: %v", err)
+	}
+	// Verify the body the client sent (outer handler captured it in stub.lastBody before our handler ran).
+	var sentBody SupplierStoreCreateRequest
+	if err := json.Unmarshal(stub.lastBody, &sentBody); err != nil {
+		t.Fatalf("decode captured request body: %v", err)
+	}
+	if sentBody.MarketCode != req.MarketCode {
+		t.Errorf("request market_code = %q, want %q", sentBody.MarketCode, req.MarketCode)
+	}
+	if got.ID != want.ID {
+		t.Errorf("store.id = %q, want %q", got.ID, want.ID)
+	}
+}
+
+func TestClientRetailCapabilityNotFound(t *testing.T) {
+	stub := newStubCore(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"retail capability not found"}}`))
+	})
+	client := stub.client(t)
+	_, err := client.GetSupplierRetailCapability(context.Background(), "sup-missing", "sub-x")
+	if err == nil {
+		t.Fatal("expected error for not found, got nil")
+	}
+	var coreErr *Error
+	if !asError(err, &coreErr) {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if coreErr.Code != CodeNotFound {
+		t.Errorf("code = %q, want %q", coreErr.Code, CodeNotFound)
 	}
 }

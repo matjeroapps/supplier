@@ -97,21 +97,30 @@ type SupplierSyncJobResponse struct {
 	ErrorSummary   string `json:"error_summary,omitempty"`
 }
 
+// SupplierRetailCapabilityRequest is the public contract for provisioning
+// an affiliated direct retail seller (ADR-019).
 type SupplierRetailCapabilityRequest struct {
-	Code     string         `json:"code"`
-	Name     string         `json:"name"`
-	Settings map[string]any `json:"settings"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
+// SupplierRetailCapabilityResponse is returned by GET/POST /retail-capability.
 type SupplierRetailCapabilityResponse struct {
-	Affiliation coreclient.SupplierSellerAffiliation `json:"affiliation"`
-	Seller      coreclient.Seller                    `json:"seller"`
+	Affiliation struct {
+		SupplierID string `json:"supplier_id"`
+		SellerID   string `json:"seller_id"`
+	} `json:"affiliation"`
+	Seller struct {
+		ID     string `json:"id"`
+		Code   string `json:"code"`
+		Name   string `json:"name"`
+		Status string `json:"status"`
+	} `json:"seller"`
 }
 
+// SupplierStoreCreateRequest creates an affiliated direct retail store.
 type SupplierStoreCreateRequest struct {
-	MarketCode string         `json:"market_code"`
-	Code       string         `json:"code"`
-	Name       string         `json:"name"`
-	Status     string         `json:"status"`
-	Settings   map[string]any `json:"settings"`
+	MarketCode string `json:"market_code"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
 }

@@ -28,6 +28,9 @@ export function createApiClient(config: ApiConfig) {
     },
     put(path: string, body?: unknown): Promise<Response> {
       return request('PUT', path, body);
+    },
+    delete(path: string): Promise<Response> {
+      return request('DELETE', path);
     }
   };
 }

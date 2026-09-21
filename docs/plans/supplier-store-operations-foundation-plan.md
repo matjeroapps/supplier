@@ -31,7 +31,7 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
 
 ### 1. Supplier Core Client Layer (`supplier/internal/coreclient`)
 
-#### [MODIFY] `suppliers.go`
+#### [MODIFY] [suppliers.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/coreclient/suppliers.go)
 - Add retail capability DTOs: `SupplierSellerAffiliation`, `Seller`, `Store`, `SupplierRetailCapabilityResponse`, `SupplierRetailCapabilityRequest`, `SupplierStoreCreateRequest`.
 - Add client methods:
   - `GetSupplierRetailCapability(ctx, supplierID, subject)`
@@ -39,20 +39,20 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
   - `ListSupplierStores(ctx, supplierID, subject, page)`
   - `CreateSupplierStore(ctx, supplierID, subject, req)`
 
-#### [MODIFY] `client.go`
+#### [MODIFY] [client.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/coreclient/client.go)
 - Add `patch` and `delete` helper methods for complete HTTP method coverage.
 
-#### [MODIFY] `client_test.go`
+#### [MODIFY] [client_test.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/coreclient/client_test.go)
 - Add contract tests verifying retail capability endpoints, store listing/creation, error handling, and parameter propagation.
 
 ---
 
 ### 2. Supplier Actor API Surface (`supplier/internal/supplierapi`)
 
-#### [MODIFY] `contracts.go`
+#### [MODIFY] [contracts.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/supplierapi/contracts.go)
 - Define request and response contracts for retail capability, affiliated stores, sync jobs, and extended product/offer metadata.
 
-#### [MODIFY] `router.go`
+#### [MODIFY] [router.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/supplierapi/router.go)
 - Update `CoreCapabilities` interface with retail capability and store methods.
 - Register routes:
   - `GET /v1/supplier/retail-capability`
@@ -61,24 +61,24 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
   - `POST /v1/supplier/stores`
 - Implement handlers enforcing subject resolution and tenant isolation via `deps.supplierID(w, r)`.
 
-#### [MODIFY] `router_test.go`
+#### [MODIFY] [router_test.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/supplierapi/router_test.go)
 - Update `stubCore` and add test cases for retail capability, store provisioning, and sync operations.
 
 ---
 
 ### 3. OpenAPI Specifications (`supplier/docs/api/supplier`)
 
-#### [MODIFY] `specs.go`
+#### [MODIFY] [specs.go](file:///Users/zidan/www/personal/Matjerhub/supplier/internal/openapi/specs.go)
 - Register RouteSpec entries for sync jobs (`/v1/supplier/integrations/sync-jobs`, `/v1/supplier/integrations/sync-jobs/{id}`), retail capability (`/v1/supplier/retail-capability`), and stores (`/v1/supplier/stores`).
 
-#### [MODIFY] `openapi.json`
+#### [MODIFY] [openapi.json](file:///Users/zidan/www/personal/Matjerhub/supplier/docs/api/supplier/openapi.json)
 - Regenerate OpenAPI documentation using `go run ./cmd/openapi-gen`.
 
 ---
 
 ### 4. Supplier Web Portal (`supplier/web/supplier`)
 
-#### [MODIFY] `locales.ts`
+#### [MODIFY] [locales.ts](file:///Users/zidan/www/personal/Matjerhub/supplier/web/supplier/src/i18n/locales.ts)
 - Add comprehensive Arabic and English translation dictionaries covering:
   - Navigation tabs (Dashboard, Products, Offers, Inventory, Locations, Integrations & Sync, Settings, Retail)
   - Product Authoring (title, slug, status, categories, translations)
@@ -90,7 +90,7 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
   - Integration Sync Jobs (status, total/processed/failed, retry, errors)
   - Affiliated Retail Store (provisioning, store list)
 
-#### [MODIFY] `main.tsx`
+#### [MODIFY] [main.tsx](file:///Users/zidan/www/personal/Matjerhub/supplier/web/supplier/src/main.tsx)
 - Build the full production-ready Supplier Portal using `@matjerhub/ui-sdk`:
   - **Dashboard Overview**: KPI cards (Total Products, Active Offers, Total Stock, Active Sync Jobs).
   - **Products & Authoring**: Table with search/filter, product details, multi-variant/SKU builder, media gallery with presigned upload simulation, and category selection.
@@ -100,7 +100,7 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
   - **Affiliated Retail Store**: Retail capability status, provisioning form, and store overview.
   - **Profile & Settings**: Profile editor and locale switcher.
 
-#### [MODIFY] `main.test.tsx`
+#### [MODIFY] [main.test.tsx](file:///Users/zidan/www/personal/Matjerhub/supplier/web/supplier/src/main.test.tsx)
 - Add comprehensive Vitest tests verifying:
   - Initial dashboard loading and rendering
   - Navigation between all tabs
@@ -147,8 +147,3 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
 
 5. **Implementation Report**:
    Create `supplier/docs/implementation/supplier-store-operations-foundation-report.md`.
-
-6. **Git & Delivery**:
-   - Commit all changes to `feature/supplier-store-operations-foundation`.
-   - Push to `origin`.
-   - Open GitHub PR against `main`.

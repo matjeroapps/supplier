@@ -36,21 +36,24 @@ type stubCore struct {
 
 	err error
 
-	supplier   coreclient.Supplier
-	settings   map[string]any
-	status     string
-	markets    []coreclient.SupplierMarket
-	locations  []coreclient.FulfillmentLocation
-	location   coreclient.FulfillmentLocation
-	products   []coreclient.SupplierProduct
-	product    coreclient.ProductCreateResult
-	categories []string
-	offers     []coreclient.SupplierOffer
-	offer      coreclient.SupplierOffer
-	snapshots  []coreclient.InventorySnapshot
-	snapshot   coreclient.InventorySnapshot
-	adjust     coreclient.InventoryAdjustmentResult
-	movements  []coreclient.InventoryMovement
+	supplier         coreclient.Supplier
+	settings         map[string]any
+	status           string
+	markets          []coreclient.SupplierMarket
+	locations        []coreclient.FulfillmentLocation
+	location         coreclient.FulfillmentLocation
+	products         []coreclient.SupplierProduct
+	product          coreclient.ProductCreateResult
+	categories       []string
+	offers           []coreclient.SupplierOffer
+	offer            coreclient.SupplierOffer
+	snapshots        []coreclient.InventorySnapshot
+	snapshot         coreclient.InventorySnapshot
+	adjust           coreclient.InventoryAdjustmentResult
+	movements        []coreclient.InventoryMovement
+	retailCapability coreclient.SupplierRetailCapabilityResponse
+	stores           []coreclient.AffiliatedStore
+	store            coreclient.AffiliatedStore
 }
 
 func (s *stubCore) ResolveSupplier(ctx context.Context, subject string) (string, error) {
@@ -143,30 +146,24 @@ func (s *stubCore) ListSupplierSyncJobs(ctx context.Context, subject, supplierID
 	return []coreclient.SupplierSyncJobResponse{{ID: "job-1", Status: "completed"}}, s.err
 }
 
-func (s *stubCore) GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (*coreclient.SupplierRetailCapabilityResponse, error) {
+func (s *stubCore) GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (coreclient.SupplierRetailCapabilityResponse, error) {
 	s.supplierID, s.subject = supplierID, subject
-	return &coreclient.SupplierRetailCapabilityResponse{
-		Affiliation: coreclient.SupplierSellerAffiliation{SupplierID: supplierID, SellerID: "sel-1"},
-		Seller:      coreclient.Seller{ID: "sel-1", Code: "store1", Name: "Store 1", Status: "active"},
-	}, s.err
+	return s.retailCapability, s.err
 }
 
-func (s *stubCore) CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req coreclient.SupplierRetailCapabilityRequest) (*coreclient.SupplierRetailCapabilityResponse, error) {
+func (s *stubCore) CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req coreclient.SupplierRetailCapabilityRequest) (coreclient.SupplierRetailCapabilityResponse, error) {
 	s.supplierID, s.subject = supplierID, subject
-	return &coreclient.SupplierRetailCapabilityResponse{
-		Affiliation: coreclient.SupplierSellerAffiliation{SupplierID: supplierID, SellerID: "sel-1"},
-		Seller:      coreclient.Seller{ID: "sel-1", Code: req.Code, Name: req.Name, Status: "active"},
-	}, s.err
+	return s.retailCapability, s.err
 }
 
-func (s *stubCore) ListSupplierStores(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.Store, error) {
+func (s *stubCore) ListSupplierStores(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.AffiliatedStore, error) {
 	s.supplierID, s.subject, s.page = supplierID, subject, page
-	return []coreclient.Store{{ID: "str-1", SellerID: "sel-1", MarketCode: "EG", Code: "store1", Name: "Store 1", Status: "active"}}, s.err
+	return s.stores, s.err
 }
 
-func (s *stubCore) CreateSupplierStore(ctx context.Context, supplierID, subject string, req coreclient.SupplierStoreCreateRequest) (coreclient.Store, error) {
+func (s *stubCore) CreateSupplierStore(ctx context.Context, supplierID, subject string, req coreclient.SupplierStoreCreateRequest) (coreclient.AffiliatedStore, error) {
 	s.supplierID, s.subject = supplierID, subject
-	return coreclient.Store{ID: "str-1", SellerID: "sel-1", MarketCode: req.MarketCode, Code: req.Code, Name: req.Name, Status: req.Status}, s.err
+	return s.store, s.err
 }
 
 // newHandler builds the supplier routes behind an authenticated principal.
@@ -520,32 +517,101 @@ func TestSupplierListSyncJobs(t *testing.T) {
 	}
 }
 
-func TestSupplierRetailCapability(t *testing.T) {
-	core := &stubCore{}
+// --- affiliated retail capability route tests ---
+
+func TestSupplierGetRetailCapability(t *testing.T) {
+	core := &stubCore{
+		retailCapability: coreclient.SupplierRetailCapabilityResponse{},
+	}
 	handler := newHandler(core)
 
 	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/retail-capability", "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
 	}
-
-	postRec := doRequest(t, handler, http.MethodPost, "/v1/supplier/retail-capability", `{"code":"store1","name":"Store 1"}`)
-	if postRec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201 (body %q)", postRec.Code, postRec.Body.String())
+	if core.supplierID != "supplier-resolved" {
+		t.Errorf("supplierID = %q, want supplier-resolved", core.supplierID)
 	}
 }
 
-func TestSupplierStores(t *testing.T) {
+func TestSupplierCreateRetailCapability(t *testing.T) {
 	core := &stubCore{}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodPost, "/v1/supplier/retail-capability", `{"code":"direct-store","name":"Direct Store"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body %q)", rec.Code, rec.Body.String())
+	}
+	if core.supplierID != "supplier-resolved" {
+		t.Errorf("supplierID = %q, want supplier-resolved", core.supplierID)
+	}
+}
+
+func TestSupplierListStores(t *testing.T) {
+	core := &stubCore{
+		stores: []coreclient.AffiliatedStore{{ID: "str-1", Code: "cairo", Name: "Cairo", Status: "active"}},
+	}
 	handler := newHandler(core)
 
 	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/stores", "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body %q)", rec.Code, rec.Body.String())
 	}
+	var body struct {
+		Items []coreclient.AffiliatedStore `json:"items"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if len(body.Items) != 1 {
+		t.Errorf("items = %d, want 1", len(body.Items))
+	}
+}
 
-	postRec := doRequest(t, handler, http.MethodPost, "/v1/supplier/stores", `{"market_code":"EG","code":"store1","name":"Store 1","status":"active"}`)
-	if postRec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201 (body %q)", postRec.Code, postRec.Body.String())
+func TestSupplierCreateStore(t *testing.T) {
+	core := &stubCore{
+		store: coreclient.AffiliatedStore{ID: "str-2", Code: "riyadh", Name: "Riyadh", Status: "active"},
+	}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodPost, "/v1/supplier/stores", `{"market_code":"SA","code":"riyadh","name":"Riyadh"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body %q)", rec.Code, rec.Body.String())
+	}
+}
+
+// --- error-path tests for new retail routes ---
+
+func TestSupplierRetailCapabilityReturns503OnCoreUnavailable(t *testing.T) {
+	core := &stubCore{err: coreclient.ErrUnavailable}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodGet, "/v1/supplier/retail-capability", "")
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 (body %q)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSupplierCreateRetailCapabilityReturns409OnConflict(t *testing.T) {
+	core := &stubCore{err: &coreclient.Error{Status: 409, Code: coreclient.CodeConflict, Message: "already provisioned"}}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodPost, "/v1/supplier/retail-capability", `{"code":"dup","name":"Dup"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409 (body %q)", rec.Code, rec.Body.String())
+	}
+	code := decodeError(t, rec)
+	if code != coreclient.CodeConflict {
+		t.Errorf("error code = %q, want %q", code, coreclient.CodeConflict)
+	}
+}
+
+func TestSupplierCreateStoreReturns503OnCoreUnavailable(t *testing.T) {
+	core := &stubCore{err: coreclient.ErrUnavailable}
+	handler := newHandler(core)
+
+	rec := doRequest(t, handler, http.MethodPost, "/v1/supplier/stores", `{"market_code":"EG","code":"cairo","name":"Cairo"}`)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 (body %q)", rec.Code, rec.Body.String())
 	}
 }

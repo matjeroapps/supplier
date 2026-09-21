@@ -37,10 +37,11 @@ type CoreCapabilities interface {
 	CreateSupplierSyncJob(ctx context.Context, subject, connectionID, supplierID string) (*coreclient.SupplierSyncJobResponse, error)
 	GetSupplierSyncJob(ctx context.Context, subject, jobID string) (*coreclient.SupplierSyncJobResponse, error)
 	ListSupplierSyncJobs(ctx context.Context, subject, supplierID string) ([]coreclient.SupplierSyncJobResponse, error)
-	GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (*coreclient.SupplierRetailCapabilityResponse, error)
-	CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req coreclient.SupplierRetailCapabilityRequest) (*coreclient.SupplierRetailCapabilityResponse, error)
-	ListSupplierStores(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.Store, error)
-	CreateSupplierStore(ctx context.Context, supplierID, subject string, req coreclient.SupplierStoreCreateRequest) (coreclient.Store, error)
+	// Affiliated retail capability (ADR-019). Wholesale operations remain primary.
+	GetSupplierRetailCapability(ctx context.Context, supplierID, subject string) (coreclient.SupplierRetailCapabilityResponse, error)
+	CreateSupplierRetailCapability(ctx context.Context, supplierID, subject string, req coreclient.SupplierRetailCapabilityRequest) (coreclient.SupplierRetailCapabilityResponse, error)
+	ListSupplierStores(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.AffiliatedStore, error)
+	CreateSupplierStore(ctx context.Context, supplierID, subject string, req coreclient.SupplierStoreCreateRequest) (coreclient.AffiliatedStore, error)
 }
 
 // Dependencies wires the supplier routes.
@@ -67,10 +68,11 @@ func RegisterSupplierRoutes(deps Dependencies) func(r chi.Router) {
 		r.Post("/supplier/integrations/sync-jobs", deps.handleCreateSupplierSyncJob)
 		r.Get("/supplier/integrations/sync-jobs/{id}", deps.handleGetSupplierSyncJob)
 		r.Get("/supplier/integrations/sync-jobs", deps.handleListSupplierSyncJobs)
-		r.Get("/supplier/retail-capability", deps.handleSupplierRetailCapability)
-		r.Post("/supplier/retail-capability", deps.handleSupplierRetailCapabilityCreate)
-		r.Get("/supplier/stores", deps.handleSupplierStores)
-		r.Post("/supplier/stores", deps.handleSupplierStoreCreate)
+		// Affiliated retail capability (ADR-019) — secondary to wholesale operations.
+		r.Get("/supplier/retail-capability", deps.handleGetRetailCapability)
+		r.Post("/supplier/retail-capability", deps.handleCreateRetailCapability)
+		r.Get("/supplier/stores", deps.handleListStores)
+		r.Post("/supplier/stores", deps.handleCreateStore)
 	}
 }
 
@@ -358,47 +360,48 @@ func (deps Dependencies) handleSupplierInventoryMovements(w http.ResponseWriter,
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
-func (deps Dependencies) handleSupplierRetailCapability(w http.ResponseWriter, r *http.Request) {
+// pageFrom converts the shared pagination window into the Core client's shape.
+func pageFrom(r *http.Request) coreclient.Page {
+	page := actorhttp.ParsePage(r)
+	return coreclient.Page{Limit: page.Limit, Offset: page.Offset}
+}
+
+// --- Affiliated retail capability handlers (ADR-019) ---
+
+func (deps Dependencies) handleGetRetailCapability(w http.ResponseWriter, r *http.Request) {
 	subject, supplierID, ok := deps.supplierID(w, r)
 	if !ok {
 		return
 	}
-	resp, err := deps.Core.GetSupplierRetailCapability(r.Context(), supplierID, subject)
+	result, err := deps.Core.GetSupplierRetailCapability(r.Context(), supplierID, subject)
 	if err != nil {
 		actorhttp.WriteCoreError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, SupplierRetailCapabilityResponse{
-		Affiliation: resp.Affiliation,
-		Seller:      resp.Seller,
-	})
+	httpx.WriteJSON(w, http.StatusOK, result)
 }
 
-func (deps Dependencies) handleSupplierRetailCapabilityCreate(w http.ResponseWriter, r *http.Request) {
+func (deps Dependencies) handleCreateRetailCapability(w http.ResponseWriter, r *http.Request) {
 	subject, supplierID, ok := deps.supplierID(w, r)
 	if !ok {
 		return
 	}
-	var body SupplierRetailCapabilityRequest
-	if !actorhttp.DecodeJSON(w, r, &body) {
+	var req SupplierRetailCapabilityRequest
+	if !actorhttp.DecodeJSON(w, r, &req) {
 		return
 	}
-	resp, err := deps.Core.CreateSupplierRetailCapability(r.Context(), supplierID, subject, coreclient.SupplierRetailCapabilityRequest{
-		Code:     body.Code,
-		Name:     body.Name,
-		Settings: body.Settings,
+	result, err := deps.Core.CreateSupplierRetailCapability(r.Context(), supplierID, subject, coreclient.SupplierRetailCapabilityRequest{
+		Code: req.Code,
+		Name: req.Name,
 	})
 	if err != nil {
 		actorhttp.WriteCoreError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, SupplierRetailCapabilityResponse{
-		Affiliation: resp.Affiliation,
-		Seller:      resp.Seller,
-	})
+	httpx.WriteJSON(w, http.StatusCreated, result)
 }
 
-func (deps Dependencies) handleSupplierStores(w http.ResponseWriter, r *http.Request) {
+func (deps Dependencies) handleListStores(w http.ResponseWriter, r *http.Request) {
 	subject, supplierID, ok := deps.supplierID(w, r)
 	if !ok {
 		return
@@ -411,31 +414,23 @@ func (deps Dependencies) handleSupplierStores(w http.ResponseWriter, r *http.Req
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
-func (deps Dependencies) handleSupplierStoreCreate(w http.ResponseWriter, r *http.Request) {
+func (deps Dependencies) handleCreateStore(w http.ResponseWriter, r *http.Request) {
 	subject, supplierID, ok := deps.supplierID(w, r)
 	if !ok {
 		return
 	}
-	var body SupplierStoreCreateRequest
-	if !actorhttp.DecodeJSON(w, r, &body) {
+	var req SupplierStoreCreateRequest
+	if !actorhttp.DecodeJSON(w, r, &req) {
 		return
 	}
 	store, err := deps.Core.CreateSupplierStore(r.Context(), supplierID, subject, coreclient.SupplierStoreCreateRequest{
-		MarketCode: body.MarketCode,
-		Code:       body.Code,
-		Name:       body.Name,
-		Status:     body.Status,
-		Settings:   body.Settings,
+		MarketCode: req.MarketCode,
+		Code:       req.Code,
+		Name:       req.Name,
 	})
 	if err != nil {
 		actorhttp.WriteCoreError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, store)
-}
-
-// pageFrom converts the shared pagination window into the Core client's shape.
-func pageFrom(r *http.Request) coreclient.Page {
-	page := actorhttp.ParsePage(r)
-	return coreclient.Page{Limit: page.Limit, Offset: page.Offset}
 }
