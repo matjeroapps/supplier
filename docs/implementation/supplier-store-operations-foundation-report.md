@@ -8,7 +8,10 @@ This report documents the post-merge audit, evidence reconciliation, and verific
 - **PR #11**: Initial foundation implementation of wholesale operations, BFF routing, and ADR-019 retail capability.
 - **PR #12**: Initial baseline merge into `main`.
 - **PR #13**: Corrective follow-up audit merged into `main` (expanded frontend test suite to 39 tests, exported `App` for component testing, corrected retail stores table header, and sanitized documentation paths).
-- **Current `main` Baseline SHA**: `a2c5709`
+- **PR #14**: Post-merge audit merged into `main` (reconciled implementation evidence and verification classifications).
+- **Current `main` Baseline SHA**: `6339f48`
+
+This branch performs documentation and verification-evidence reconciliation only. It does not reimplement Supplier Store Operations or change application behavior.
 
 The Supplier Portal establishes wholesale supply operations as its primary topology:
 - **Wholesale Catalog Operations**: Multi-SKU product authoring (distinct SKU codes and barcodes), multi-locale localization (Arabic & English), category assignment, and media gallery with presigned S3 upload flows (intent -> binary upload -> complete verification -> primary designation -> deletion).
@@ -25,11 +28,16 @@ The Supplier Portal establishes wholesale supply operations as its primary topol
 ### Repository Independence (ADR-017)
 - `matjeroapps/supplier` accesses all Core-owned domain invariants over HTTP via `internal/coreclient`.
 - Request and response contracts are strictly owned within the Supplier repository (`internal/supplierapi/contracts.go` and `internal/coreclient/suppliers.go`).
-- **Zero direct Core database access**: Verified via code inspection; handlers communicate exclusively through the Core HTTP gateway.
-- **Zero direct Core Go package imports**: Audited via `grep -r 'github.com/matjeroapps/core' internal/` -> 0 matches.
+- **Zero direct Core database access**: Historical PR #14 evidence records code inspection showing that handlers communicate exclusively through the Core HTTP gateway.
+- **Zero direct Core Go package imports**: Historical PR #14 evidence records `grep -r 'github.com/matjeroapps/core' internal/` -> 0 matches.
 
 ### Phase-Name Leakage Audit
-- Audited across all Go source files, tests, OpenAPI specs, TypeScript components, CSS, and locales via `grep -ri 'phase' internal/ web/src/` -> 0 matches.
+- The previously documented command was executed during this audit:
+  `grep -ri 'phase' internal/ web/src/`
+  It returned `grep: web/src/: No such file or directory` with exit status `2`; it is not evidence of a clean audit.
+- The corrected repository-relative audit was executed during this audit:
+  `grep -ri 'phase' internal/ web/supplier/src/ docs/api/supplier/`
+  It produced no output and returned exit status `1` (no matches).
 
 ---
 
@@ -39,18 +47,20 @@ The Supplier Portal establishes wholesale supply operations as its primary topol
 |-----------|-------|----------------|-------------------|
 | **Core Client Layer** | `internal/coreclient/client.go`<br>`internal/coreclient/suppliers.go`<br>`internal/coreclient/client_test.go` | **IMPLEMENTED & CONTRACT VERIFIED** | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` methods; retail capability DTOs (`SupplierSellerAffiliation`, `AffiliatedSeller`, `AffiliatedStore`, `SupplierRetailCapabilityRequest/Response`, `SupplierStoreCreateRequest`); 25 contract tests pass with `-race` (0 data races). |
 | **API Contracts & Router** | `internal/supplierapi/contracts.go`<br>`internal/supplierapi/router.go`<br>`internal/supplierapi/integration.go`<br>`internal/supplierapi/router_test.go` | **IMPLEMENTED & CONTRACT VERIFIED** | Public retail capability and store request/response types; 4 new routes (`GET/POST /v1/supplier/retail-capability`, `GET/POST /v1/supplier/stores`) with strict subject resolution and tenant isolation; 28 tests pass with `-race` (0 data races). |
-| **OpenAPI Contract** | `internal/openapi/specs.go`<br>`docs/api/supplier/openapi.json` | **IMPLEMENTED & VERIFIED** | Registered route specs for sync jobs, retail capability, and stores; verified regeneration and exact diff match (0 diff). |
-| **Localization** | `web/supplier/src/i18n/locales.ts` | **IMPLEMENTED & VERIFIED** | 100% paired Arabic (RTL) and English (LTR) translations across all 9 groups: `nav`, `kpi`, `products`, `offers`, `inventory`, `locations`, `integrations`, `retail`, `settings`, and `common`. Verified via `check-locales.mjs`. |
+| **OpenAPI Contract** | `internal/openapi/specs.go`<br>`docs/api/supplier/openapi.json` | **IMPLEMENTED & CONTRACT VERIFIED** | Registered route specs for sync jobs, retail capability, and stores; historical PR #14 evidence records regeneration and an exact diff match (0 diff). |
+| **Localization** | `web/supplier/src/i18n/locales.ts` | **IMPLEMENTED & AUTOMATED TEST VERIFIED** | 100% paired Arabic (RTL) and English (LTR) translations across all 10 groups: `nav`, `kpi`, `products`, `offers`, `inventory`, `locations`, `integrations`, `retail`, `settings`, and `common`. Historical PR #14 evidence records verification via `check-locales.mjs`. |
 | **Supplier Web SPA** | `web/supplier/src/main.tsx`<br>`web/supplier/src/lib/api.ts` | **IMPLEMENTED & COMPONENT VERIFIED** | Single-page application using `@matjerhub/ui-sdk` with 8 workspaces: Dashboard, Products, Offers, Inventory, Locations, Integrations, Retail, and Settings. Tested with mocked HTTP contracts in Vitest. |
-| **Frontend Test Suite** | `web/supplier/src/main.test.tsx` | **IMPLEMENTED & VERIFIED** | 39 automated tests covering locale parity, DOM direction (`dir="rtl"` / `dir="ltr"`), dashboard rendering, workspace navigation, product authoring, presigned media workflow, market offers, stock adjustment, movement history, fulfillment locations, sync job triggers & retries, ADR-019 retail capability provisioning & store creation, settings, and API error states. |
-| **Documentation Hygiene** | `docs/plans/supplier-store-operations-foundation-plan.md`<br>`docs/implementation/supplier-store-operations-foundation-report.md` | **VERIFIED** | 100% repository-relative paths. Zero machine-specific absolute paths. |
+| **Frontend Test Suite** | `web/supplier/src/main.test.tsx` | **IMPLEMENTED & AUTOMATED TEST VERIFIED** | Historical PR #14 evidence records 39 automated tests covering locale parity, DOM direction (`dir="rtl"` / `dir="ltr"`), dashboard rendering, workspace navigation, product authoring, presigned media workflow, market offers, stock adjustment, movement history, fulfillment locations, sync job triggers & retries, ADR-019 retail capability provisioning & store creation, settings, and API error states. |
+| **Documentation Hygiene** | `docs/plans/supplier-store-operations-foundation-plan.md`<br>`docs/implementation/supplier-store-operations-foundation-report.md` | **AUTOMATED TEST VERIFIED** | Final audit found no machine-specific absolute paths in `docs/`. |
 | **Physical S3/MinIO Storage** | N/A | **NOT VERIFIED / ENVIRONMENT LIMITATION** | Presigned upload contracts and browser workflows are verified via client mocks; live uploads to a physical AWS S3 / MinIO cluster are not verified as no physical storage cluster is provisioned in the local sandbox. |
 | **Live External Connectors** | N/A | **NOT VERIFIED / ENVIRONMENT LIMITATION** | Sync Hub UI, job state machines, progress metrics, and error summaries are verified; live external sync execution against third-party platforms (e.g. Salla, Zid, ERP) is not verified. |
 | **Live Cross-Service Multi-Process Orchestration** | N/A | **NOT VERIFIED / ENVIRONMENT LIMITATION** | BFF-to-Core HTTP contract execution is verified via unit and contract test suites with stub servers; multi-service live networked execution against a running Core daemon with PostgreSQL was not performed. |
 
 ---
 
-## 4. Verification Evidence & Exact Command Outputs
+## 4. Historical Implementation Verification Evidence
+
+The following command results are retained from the merged PR #14 implementation evidence. They establish the already executed backend/frontend and OpenAPI verification baseline; they were not re-run during this documentation-only audit.
 
 ### A. Backend Code Quality & Race Detection
 ```bash
@@ -169,42 +179,87 @@ $ git diff --check
 
 ---
 
-## 5. Media & Storage Verification
+## 5. Final Documentation Audit Evidence
 
-- **Verified**:
+The final audit executed the following checks after branching from `origin/main` at `6339f48`:
+
+### A. Phase-Name Leakage
+```bash
+$ grep -ri 'phase' internal/ web/src/
+grep: web/src/: No such file or directory
+# Exit status: 2
+# Result: the previously documented path was invalid and did not establish a clean audit.
+
+$ grep -ri 'phase' internal/ web/supplier/src/ docs/api/supplier/
+# No output
+# Exit status: 1 (no matches)
+```
+
+### B. Documentation Path Hygiene
+```bash
+$ rg -n --hidden --glob '*.md' 'file:///|/Users/|/var/www/' docs --glob '!docs/implementation/supplier-store-operations-foundation-report.md'
+# No output
+# Exit status: 1 (no machine-specific absolute paths found in the other documentation files)
+
+$ rg -n '/Users/zidan/|/var/www/' docs/implementation/supplier-store-operations-foundation-report.md
+# No output
+# Exit status: 1 (no machine-specific absolute paths in this report)
+```
+
+### C. Final Diff Checks
+```bash
+$ git diff --check
+# Exit status: 0
+
+$ git diff --name-only
+docs/implementation/supplier-store-operations-foundation-report.md
+docs/plans/supplier-store-operations-foundation-plan.md
+# Exit status: 0
+```
+
+No backend or frontend suites were re-run during this audit because application code was unchanged; the merged PR #14 evidence above remains the recorded verification for those suites.
+
+---
+
+## 6. Media & Storage Verification
+
+- **CONTRACT VERIFIED / COMPONENT VERIFIED**:
   - Supplier API media contracts and workflows (`media-intent` -> binary PUT -> `media-complete` -> set primary -> delete) are fully implemented and verified via automated Vitest component testing and backend contract testing.
   - S3 URL and payload parameter passing verified.
-- **Not Verified**:
+- **NOT VERIFIED / ENVIRONMENT LIMITATION**:
   - Live upload to a physical AWS S3 / MinIO storage bucket.
 - **Reason**:
   - No physical MinIO/S3 daemon is provisioned in the isolated local sandbox environment.
 
 ---
 
-## 6. ADR-019 Retail Channel Verification
+## 7. ADR-019 Retail Channel Verification
 
-- Wholesale operations remain the primary interface across navigation, KPIs, and operational workflows.
+- **COMPONENT VERIFIED**: Wholesale operations remain the primary interface across navigation, KPIs, and operational workflows.
 - ADR-019 Direct Retail capability is isolated under `/retail`.
 - Unprovisioned state correctly presents provisioning form.
 - Provisioned state displays affiliated seller details and manages affiliated retail stores.
-- Tenant isolation and subject resolution are enforced via `deps.supplierID(w, r)`.
+- **AUTOMATED TEST VERIFIED**: Tenant isolation and subject resolution are enforced via `deps.supplierID(w, r)`.
 - 409 Conflict, 404 Not Found, and 503 Unavailable error states verified via backend unit tests.
 
 ---
 
-## 7. Cross-System Integration & Vertical Slice Status
+## 8. Cross-System Integration & Vertical Slice Status
 
-- **Verified**:
+- **COMPONENT VERIFIED**:
   - End-to-end frontend interaction flows across all 8 workspaces against mocked HTTP contracts.
+- **CONTRACT VERIFIED**:
   - Supplier BFF router, subject validation, error translation, and Core client HTTP contract execution against stub Core HTTP servers.
-- **Not Verified**:
+- **NOT VERIFIED / ENVIRONMENT LIMITATION**:
   - Live cross-network multi-service orchestration against a live running Core service instance with PostgreSQL.
 - **Reason**:
   - Core database and live Core daemon are external dependencies not running during isolated repository testing.
 
 ---
 
-## 8. Security & Boundary Verification
+## 9. Security & Boundary Verification
+
+**AUTOMATED TEST VERIFIED / CONTRACT VERIFIED**
 
 1. **Authentication & Authorization**: Handlers extract the validated principal subject from the request context via `actorhttp.SubjectFrom(r)`. Client-supplied subject headers are strictly ignored.
 2. **Tenant Isolation**: All supplier route handlers resolve the caller's supplier identity through Core (`deps.Core.ResolveSupplier(ctx, subject)`) before accessing any resource. A caller cannot assert another supplier's identifier.
@@ -214,11 +269,24 @@ $ git diff --check
 
 ---
 
-## 9. Conclusion & Evidence Summary
+## 10. Conclusion & Evidence Summary
 
-- **Implementation**: The Supplier Store Operations Foundation and ADR-019 retail capability are fully implemented in the repository.
-- **Backend Verification**: PASS (76 Go test cases pass with `-race`, 0 data races, `go vet` clean, `gofmt` clean).
-- **OpenAPI Verification**: PASS (Generated with 0 diff).
-- **Frontend Verification**: PASS (39 Vitest tests pass, RTL/LTR behavior covered by implemented locale and component tests, `tsc` clean, production build clean).
-- **Documentation Hygiene**: PASS (100% repository-relative paths, zero absolute paths).
-- **Documented Limitations**: Physical AWS S3/MinIO bucket upload, third-party live connector sync, and live cross-network Core+Postgres multi-process orchestration remain unverified due to environment boundaries.
+**VERIFIED**
+
+- Supplier backend contracts: **CONTRACT VERIFIED**.
+- Supplier frontend component behavior: **COMPONENT VERIFIED**.
+- OpenAPI synchronization: **CONTRACT VERIFIED**.
+- Localization parity: **AUTOMATED TEST VERIFIED** across all 10 translation groups.
+- Repository boundaries: **AUTOMATED TEST VERIFIED** through the merged boundary audit evidence.
+- Tenant/subject handling: **AUTOMATED TEST VERIFIED** through the merged backend and frontend evidence.
+- Automated backend/frontend suites already executed and documented: **AUTOMATED TEST VERIFIED**.
+
+**NOT VERIFIED / ENVIRONMENT LIMITATION**
+
+- Physical AWS S3/MinIO upload.
+- Real external Salla synchronization.
+- Real external Zid synchronization.
+- Real external ERP synchronization.
+- Live multi-process Supplier -> Core -> PostgreSQL orchestration.
+
+The implementation report preserves PRs #11, #12, #13, and #14, the merged baseline, and the fact that this branch is a documentation and verification reconciliation pass only.

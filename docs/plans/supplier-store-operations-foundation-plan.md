@@ -114,7 +114,9 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
 
 ## Verification Plan & Classification Boundaries
 
-### Automated Tests (Executed & Verified)
+### Historical Automated Verification Evidence
+
+PR #14 merged evidence records the following implementation verification commands as executed before this documentation-only audit. The final report preserves those results and distinguishes them from checks executed during this audit.
 
 1. **Go Toolchain & Backend Suite**:
    ```bash
@@ -138,7 +140,7 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
    npm run build
    ```
 
-4. **Git Hygiene & Phase-Name Leakage Audit**:
+4. **Git Hygiene**:
    ```bash
    git diff --check
    ```
@@ -148,6 +150,15 @@ The Supplier Portal's primary role is wholesale supply operations: wholesale pro
 
 ### Environment Boundaries (Documented Limitations)
 
-- **Physical S3/MinIO Object Storage**: Presigned upload contracts and workflows are verified via client/BFF tests; physical S3 bucket uploads remain unverified in the local sandbox due to absent cloud storage infrastructure.
-- **External Third-Party Connectors**: Sync Hub UI, job state machines, progress tracking, and retries are verified; live external API execution against third-party platforms (e.g. Salla, Zid, ERP) is unverified.
-- **Cross-Service Live Multi-Process Orchestration**: Core client and Supplier API contracts are verified against in-process HTTP stubs; live cross-process networked orchestration against a live Core daemon with PostgreSQL is unverified in isolated testing.
+- **Physical S3/MinIO Object Storage**: **CONTRACT VERIFIED; NOT VERIFIED / ENVIRONMENT LIMITATION**. Presigned upload contracts and workflows are verified via client/BFF tests; physical S3 bucket uploads remain unverified in the local sandbox due to absent cloud storage infrastructure.
+- **External Third-Party Connectors**: **COMPONENT VERIFIED; NOT VERIFIED / ENVIRONMENT LIMITATION**. Sync Hub UI, job state machines, progress tracking, and retries are verified; live external API execution against third-party platforms (e.g. Salla, Zid, ERP) is unverified.
+- **Cross-Service Live Multi-Process Orchestration**: **CONTRACT VERIFIED; NOT VERIFIED / ENVIRONMENT LIMITATION**. Core client and Supplier API contracts are verified against in-process HTTP stubs; live cross-process networked orchestration against a live Core daemon with PostgreSQL is unverified in isolated testing.
+
+### Required Verified Outcomes
+
+- Supplier backend contracts: **CONTRACT VERIFIED**.
+- Supplier frontend component behavior: **COMPONENT VERIFIED**.
+- OpenAPI synchronization: **CONTRACT VERIFIED**.
+- Arabic/English localization parity: **AUTOMATED TEST VERIFIED**.
+- Repository boundaries and tenant/subject handling: **AUTOMATED TEST VERIFIED**.
+- Automated backend and frontend suites: **AUTOMATED TEST VERIFIED** through the merged PR #14 evidence retained in the report.
