@@ -171,7 +171,7 @@ Final commit SHAs and PR URLs are added after the final diff checks and commits.
 Final commits:
 
 - Core: `2895321`
-- Supplier: `3b9cedb` (this report commit is amended once with the final reconciliation below)
+- Supplier implementation: `3b9cedb`; report reconciliation commits: `f7d831a`, `8c04cbe`
 - Seller: `8ff5542`
 
 Pull requests:
