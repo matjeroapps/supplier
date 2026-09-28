@@ -89,12 +89,14 @@ Readiness is evaluated in Core, not in the browser. Publication is transactional
 
 Passed:
 
-- Core: `gofmt`, `go vet ./...`, `go test ./...`, focused `go test ./modules/commerce ./internal/coreapi`, and focused race tests.
-- Supplier: `gofmt`, `go vet ./...`, `go test ./...`, focused race tests, frontend typecheck, frontend tests, and frontend production build.
+- Core: `gofmt`, `go vet ./...`, `go test ./...`, focused `go test ./modules/commerce ./internal/coreapi`, and focused race tests. Static security review covered subject-derived ownership, service-auth boundaries, SQL parameterization, and server-side readiness.
+- Supplier: `gofmt`, `go vet ./...`, `go test ./...`, focused race tests, frontend typecheck, frontend tests, and frontend production build. Static security review covered BFF authority boundaries and error delegation.
 - Seller: `gofmt`, `go vet ./...`, `go test ./...`, focused race tests, frontend typecheck, frontend tests, and frontend production build.
 - Code-first OpenAPI generators completed and generated documents changed with the route/model additions.
 
-The repository `openapi-check` targets compare generated files with the committed baseline; before committing this feature, those checks necessarily report the intended generated diff. They must be rerun after the final commits to confirm a clean generated tree.
+The repository `openapi-check` targets compare generated files with the committed baseline; after the final commits, `make openapi-check` passed in Core, Supplier, and Seller.
+
+The Codex Security diff-scan worker was started for Core, but its discovery artifact was unavailable in this environment; no security PASS is claimed from that worker.
 
 # Live Infrastructure Verification
 
