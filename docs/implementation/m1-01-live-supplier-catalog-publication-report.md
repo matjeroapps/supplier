@@ -165,3 +165,17 @@ Branches:
 - `seller`: `feature/m1-01-live-supplier-catalog-publication`
 
 Final commit SHAs and PR URLs are added after the final diff checks and commits. No PR is merged automatically.
+
+Final commits:
+
+- Core: `2895321`
+- Supplier: `3b9cedb` (this report commit is amended once with the final reconciliation below)
+- Seller: `8ff5542`
+
+Pull requests:
+
+- Core: https://github.com/matjeroapps/core/pull/76
+- Supplier: https://github.com/matjeroapps/supplier/pull/15
+- Seller: https://github.com/matjeroapps/seller/pull/37
+
+All three PRs target `main` and remain unmerged.
