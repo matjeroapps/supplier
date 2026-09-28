@@ -54,9 +54,37 @@ type SupplierOfferCreateRequest struct {
 	SupplierMarketID  string       `json:"supplier_market_id"`
 	MarketCode        string       `json:"market_code"`
 	Status            string       `json:"status"`
+	MinimumOrderQty   int64        `json:"minimum_order_quantity,omitempty"`
+	MinOrderQuantity  int64        `json:"min_order_quantity,omitempty"`
 	Price             *money.Money `json:"price"`
 	IsAvailable       *bool        `json:"is_available"`
 	AvailableQty      *int64       `json:"available_qty"`
+}
+
+type SupplierVariantCreateRequest struct {
+	Code   string `json:"code"`
+	Status string `json:"status"`
+}
+
+type SupplierSKUCreateRequest struct {
+	Code    string `json:"code"`
+	Barcode string `json:"barcode"`
+	Status  string `json:"status"`
+}
+
+type SupplierMediaCreateRequest struct {
+	MediaType  string  `json:"media_type"`
+	URI        string  `json:"uri"`
+	AltText    string  `json:"alt_text"`
+	SortOrder  int     `json:"sort_order"`
+	StorageKey *string `json:"storage_key,omitempty"`
+	IsPrimary  bool    `json:"is_primary"`
+}
+
+type SupplierMediaUpdateRequest struct {
+	AltText   string `json:"alt_text"`
+	SortOrder int    `json:"sort_order"`
+	IsPrimary bool   `json:"is_primary"`
 }
 
 type ProductCreateResponse struct {

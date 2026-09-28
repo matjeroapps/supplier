@@ -219,7 +219,21 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
       category_ids: categoryIds,
     });
     if (res.ok) {
-      const created = await res.json() as { supplier_product: Product };
+      const created = await res.json() as { product: { id: string }, supplier_product: Product };
+      if (productForm.skuCode.trim()) {
+        const variantRes = await api.post(`/v1/supplier/products/${created.product.id}/variants?locale=${activeLocale}`, {
+          code: 'default',
+          status: 'active',
+        });
+        if (variantRes.ok) {
+          const variant = await variantRes.json() as { id: string };
+          await api.post(`/v1/supplier/products/${created.product.id}/variants/${variant.id}/skus?locale=${activeLocale}`, {
+            code: productForm.skuCode,
+            barcode: productForm.barcode,
+            status: 'active',
+          });
+        }
+      }
       setProducts(prev => [created.supplier_product, ...prev]);
       setShowProductDialog(false);
       setProductForm({ slug: '', supplierCode: '', status: 'active', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', skuCode: '', barcode: '', categoryIds: '' });
@@ -331,21 +345,16 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
   }
 
   async function handleMediaUpload(productId: string, file: File) {
-    // Presigned S3 upload: intent → binary PUT → complete
-    const intentRes = await api.post(`/v1/supplier/products/${productId}/media-intent?locale=${activeLocale}`, {
-      content_type: file.type,
-      file_name: file.name,
+    const res = await api.post(`/v1/supplier/products/${productId}/media?locale=${activeLocale}`, {
+      media_type: file.type || 'image/jpeg',
+      uri: URL.createObjectURL(file),
+      alt_text: file.name,
+      sort_order: mediaItems.length,
+      storage_key: `supplier/${productId}/${file.name}`,
+      is_primary: mediaItems.length === 0,
     });
-    if (!intentRes.ok) return;
-    const { upload_url, media_id } = await intentRes.json() as { upload_url: string; media_id: string };
-
-    // Binary PUT to presigned S3 URL
-    await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-
-    // Completion verification
-    const completeRes = await api.post(`/v1/supplier/products/${productId}/media-complete?locale=${activeLocale}`, { media_id });
-    if (completeRes.ok) {
-      const media = await completeRes.json() as MediaItem;
+    if (res.ok) {
+      const media = await res.json() as MediaItem;
       setMediaItems(prev => [...prev, media]);
     }
   }
@@ -358,7 +367,11 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
   }
 
   async function handleSetPrimaryMedia(productId: string, mediaId: string) {
-    const res = await api.post(`/v1/supplier/products/${productId}/media/${mediaId}/primary?locale=${activeLocale}`, {});
+    const res = await api.put(`/v1/supplier/products/${productId}/media/${mediaId}?locale=${activeLocale}`, {
+      alt_text: '',
+      sort_order: 0,
+      is_primary: true,
+    });
     if (res.ok) {
       setMediaItems(prev => prev.map(m => ({ ...m, is_primary: m.id === mediaId })));
     }

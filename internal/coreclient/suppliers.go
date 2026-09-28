@@ -77,8 +77,53 @@ type SupplierOffer struct {
 	SupplierMarketID  string    `json:"supplier_market_id"`
 	MarketCode        string    `json:"market_code"`
 	Status            string    `json:"status"`
+	MinimumOrderQty   int64     `json:"minimum_order_quantity"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type Variant struct {
+	ID        string    `json:"id"`
+	ProductID string    `json:"product_id"`
+	Code      string    `json:"code"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type SKU struct {
+	ID        string    `json:"id"`
+	VariantID string    `json:"variant_id"`
+	Code      string    `json:"code"`
+	Barcode   string    `json:"barcode,omitempty"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type MediaMetadata struct {
+	ID        string    `json:"id"`
+	ProductID string    `json:"product_id"`
+	MediaType string    `json:"media_type"`
+	URI       string    `json:"uri"`
+	AltText   string    `json:"alt_text"`
+	SortOrder int       `json:"sort_order"`
+	IsPrimary bool      `json:"is_primary"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type PublishReadiness struct {
+	IsReady bool     `json:"is_ready"`
+	Reasons []string `json:"reasons,omitempty"`
+}
+
+type SupplierPublication struct {
+	ProductID       string           `json:"product_id"`
+	SupplierProduct SupplierProduct  `json:"supplier_product"`
+	Readiness       PublishReadiness `json:"readiness"`
+	Status          string           `json:"status"`
+	PublishedOffers []SupplierOffer  `json:"published_offers,omitempty"`
 }
 
 // InventorySnapshot is a stock position for a SKU at a location.
@@ -166,9 +211,36 @@ type OfferCreate struct {
 	SupplierMarketID  string       `json:"supplier_market_id"`
 	MarketCode        string       `json:"market_code"`
 	Status            string       `json:"status"`
+	MinimumOrderQty   int64        `json:"minimum_order_quantity,omitempty"`
 	Price             *money.Money `json:"price"`
 	IsAvailable       *bool        `json:"is_available"`
 	AvailableQty      *int64       `json:"available_qty"`
+}
+
+type VariantCreate struct {
+	Code   string `json:"code"`
+	Status string `json:"status"`
+}
+
+type SKUCreate struct {
+	Code    string `json:"code"`
+	Barcode string `json:"barcode"`
+	Status  string `json:"status"`
+}
+
+type MediaCreate struct {
+	MediaType  string  `json:"media_type"`
+	URI        string  `json:"uri"`
+	AltText    string  `json:"alt_text"`
+	SortOrder  int     `json:"sort_order"`
+	StorageKey *string `json:"storage_key,omitempty"`
+	IsPrimary  bool    `json:"is_primary"`
+}
+
+type MediaUpdate struct {
+	AltText   string `json:"alt_text"`
+	SortOrder int    `json:"sort_order"`
+	IsPrimary bool   `json:"is_primary"`
 }
 
 // SnapshotCreate opens an inventory snapshot.
@@ -293,6 +365,54 @@ func (c *Client) CreateOffer(ctx context.Context, supplierID, subject string, cr
 	var payload SupplierOffer
 	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/offers"
 	err := c.post(ctx, path, create, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+func (c *Client) CreateVariant(ctx context.Context, supplierID, productID, subject string, create VariantCreate) (Variant, error) {
+	var payload Variant
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/variants"
+	err := c.post(ctx, path, create, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+func (c *Client) CreateSKU(ctx context.Context, supplierID, productID, variantID, subject string, create SKUCreate) (SKU, error) {
+	var payload SKU
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/variants/" + url.PathEscape(variantID) + "/skus"
+	err := c.post(ctx, path, create, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+func (c *Client) CreateMedia(ctx context.Context, supplierID, productID, subject string, create MediaCreate) (MediaMetadata, error) {
+	var payload MediaMetadata
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/media"
+	err := c.post(ctx, path, create, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+func (c *Client) UpdateMedia(ctx context.Context, supplierID, productID, mediaID, subject string, update MediaUpdate) (MediaMetadata, error) {
+	var payload MediaMetadata
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/media/" + url.PathEscape(mediaID)
+	err := c.put(ctx, path, update, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+func (c *Client) DeleteMedia(ctx context.Context, supplierID, productID, mediaID, subject string) error {
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/media/" + url.PathEscape(mediaID)
+	var payload statusResponse
+	return c.delete(ctx, path, requestOptions{Subject: subject}, &payload)
+}
+
+func (c *Client) GetPublicationReadiness(ctx context.Context, supplierID, productID, subject string) (SupplierPublication, error) {
+	var payload SupplierPublication
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/readiness"
+	err := c.get(ctx, path, nil, requestOptions{Subject: subject}, &payload)
+	return payload, err
+}
+
+func (c *Client) PublishProduct(ctx context.Context, supplierID, productID, subject string) (SupplierPublication, error) {
+	var payload SupplierPublication
+	path := "/internal/v1/suppliers/" + url.PathEscape(supplierID) + "/products/" + url.PathEscape(productID) + "/publish"
+	err := c.post(ctx, path, nil, requestOptions{Subject: subject}, &payload)
 	return payload, err
 }
 

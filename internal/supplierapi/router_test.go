@@ -45,6 +45,10 @@ type stubCore struct {
 	products         []coreclient.SupplierProduct
 	product          coreclient.ProductCreateResult
 	categories       []string
+	variant          coreclient.Variant
+	sku              coreclient.SKU
+	media            coreclient.MediaMetadata
+	publication      coreclient.SupplierPublication
 	offers           []coreclient.SupplierOffer
 	offer            coreclient.SupplierOffer
 	snapshots        []coreclient.InventorySnapshot
@@ -99,6 +103,41 @@ func (s *stubCore) CreateProduct(ctx context.Context, supplierID, subject string
 func (s *stubCore) SetProductCategories(ctx context.Context, supplierID, productID, subject string, categoryIDs []string) ([]string, error) {
 	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
 	return s.categories, s.err
+}
+
+func (s *stubCore) CreateVariant(ctx context.Context, supplierID, productID, subject string, create coreclient.VariantCreate) (coreclient.Variant, error) {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.variant, s.err
+}
+
+func (s *stubCore) CreateSKU(ctx context.Context, supplierID, productID, variantID, subject string, create coreclient.SKUCreate) (coreclient.SKU, error) {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.sku, s.err
+}
+
+func (s *stubCore) CreateMedia(ctx context.Context, supplierID, productID, subject string, create coreclient.MediaCreate) (coreclient.MediaMetadata, error) {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.media, s.err
+}
+
+func (s *stubCore) UpdateMedia(ctx context.Context, supplierID, productID, mediaID, subject string, update coreclient.MediaUpdate) (coreclient.MediaMetadata, error) {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.media, s.err
+}
+
+func (s *stubCore) DeleteMedia(ctx context.Context, supplierID, productID, mediaID, subject string) error {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.err
+}
+
+func (s *stubCore) GetPublicationReadiness(ctx context.Context, supplierID, productID, subject string) (coreclient.SupplierPublication, error) {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.publication, s.err
+}
+
+func (s *stubCore) PublishProduct(ctx context.Context, supplierID, productID, subject string) (coreclient.SupplierPublication, error) {
+	s.supplierID, s.resourceID, s.subject = supplierID, productID, subject
+	return s.publication, s.err
 }
 
 func (s *stubCore) ListOffers(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.SupplierOffer, error) {

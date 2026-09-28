@@ -28,6 +28,13 @@ type CoreCapabilities interface {
 	ListProducts(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.SupplierProduct, error)
 	CreateProduct(ctx context.Context, supplierID, subject string, create coreclient.ProductCreate) (coreclient.ProductCreateResult, error)
 	SetProductCategories(ctx context.Context, supplierID, productID, subject string, categoryIDs []string) ([]string, error)
+	CreateVariant(ctx context.Context, supplierID, productID, subject string, create coreclient.VariantCreate) (coreclient.Variant, error)
+	CreateSKU(ctx context.Context, supplierID, productID, variantID, subject string, create coreclient.SKUCreate) (coreclient.SKU, error)
+	CreateMedia(ctx context.Context, supplierID, productID, subject string, create coreclient.MediaCreate) (coreclient.MediaMetadata, error)
+	UpdateMedia(ctx context.Context, supplierID, productID, mediaID, subject string, update coreclient.MediaUpdate) (coreclient.MediaMetadata, error)
+	DeleteMedia(ctx context.Context, supplierID, productID, mediaID, subject string) error
+	GetPublicationReadiness(ctx context.Context, supplierID, productID, subject string) (coreclient.SupplierPublication, error)
+	PublishProduct(ctx context.Context, supplierID, productID, subject string) (coreclient.SupplierPublication, error)
 	ListOffers(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.SupplierOffer, error)
 	CreateOffer(ctx context.Context, supplierID, subject string, create coreclient.OfferCreate) (coreclient.SupplierOffer, error)
 	ListInventorySnapshots(ctx context.Context, supplierID, subject string, page coreclient.Page) ([]coreclient.InventorySnapshot, error)
@@ -59,6 +66,13 @@ func RegisterSupplierRoutes(deps Dependencies) func(r chi.Router) {
 		r.Get("/supplier/products", deps.handleSupplierProducts)
 		r.Post("/supplier/products", deps.handleSupplierProductCreate)
 		r.Put("/supplier/products/{id}/categories", deps.handleSupplierProductCategories)
+		r.Post("/supplier/products/{id}/variants", deps.handleSupplierVariantCreate)
+		r.Post("/supplier/products/{id}/variants/{variant_id}/skus", deps.handleSupplierSKUCreate)
+		r.Post("/supplier/products/{id}/media", deps.handleSupplierMediaCreate)
+		r.Put("/supplier/products/{id}/media/{media_id}", deps.handleSupplierMediaUpdate)
+		r.Delete("/supplier/products/{id}/media/{media_id}", deps.handleSupplierMediaDelete)
+		r.Get("/supplier/products/{id}/readiness", deps.handleSupplierReadiness)
+		r.Post("/supplier/products/{id}/publish", deps.handleSupplierPublish)
 		r.Get("/supplier/offers", deps.handleSupplierOffers)
 		r.Post("/supplier/offers", deps.handleSupplierOfferCreate)
 		r.Get("/supplier/inventory", deps.handleSupplierInventory)
@@ -275,6 +289,7 @@ func (deps Dependencies) handleSupplierOfferCreate(w http.ResponseWriter, r *htt
 		SupplierMarketID:  body.SupplierMarketID,
 		MarketCode:        body.MarketCode,
 		Status:            body.Status,
+		MinimumOrderQty:   firstPositive(body.MinimumOrderQty, body.MinOrderQuantity),
 		Price:             body.Price,
 		IsAvailable:       body.IsAvailable,
 		AvailableQty:      body.AvailableQty,
@@ -284,6 +299,123 @@ func (deps Dependencies) handleSupplierOfferCreate(w http.ResponseWriter, r *htt
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, offer)
+}
+
+func firstPositive(values ...int64) int64 {
+	for _, value := range values {
+		if value > 0 {
+			return value
+		}
+	}
+	return 1
+}
+
+func (deps Dependencies) handleSupplierVariantCreate(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	var body SupplierVariantCreateRequest
+	if !actorhttp.DecodeJSON(w, r, &body) {
+		return
+	}
+	variant, err := deps.Core.CreateVariant(r.Context(), supplierID, chi.URLParam(r, "id"), subject, coreclient.VariantCreate{Code: body.Code, Status: body.Status})
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, variant)
+}
+
+func (deps Dependencies) handleSupplierSKUCreate(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	var body SupplierSKUCreateRequest
+	if !actorhttp.DecodeJSON(w, r, &body) {
+		return
+	}
+	sku, err := deps.Core.CreateSKU(r.Context(), supplierID, chi.URLParam(r, "id"), chi.URLParam(r, "variant_id"), subject, coreclient.SKUCreate{Code: body.Code, Barcode: body.Barcode, Status: body.Status})
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, sku)
+}
+
+func (deps Dependencies) handleSupplierMediaCreate(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	var body SupplierMediaCreateRequest
+	if !actorhttp.DecodeJSON(w, r, &body) {
+		return
+	}
+	media, err := deps.Core.CreateMedia(r.Context(), supplierID, chi.URLParam(r, "id"), subject, coreclient.MediaCreate{
+		MediaType: body.MediaType, URI: body.URI, AltText: body.AltText, SortOrder: body.SortOrder, StorageKey: body.StorageKey, IsPrimary: body.IsPrimary,
+	})
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, media)
+}
+
+func (deps Dependencies) handleSupplierMediaUpdate(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	var body SupplierMediaUpdateRequest
+	if !actorhttp.DecodeJSON(w, r, &body) {
+		return
+	}
+	media, err := deps.Core.UpdateMedia(r.Context(), supplierID, chi.URLParam(r, "id"), chi.URLParam(r, "media_id"), subject, coreclient.MediaUpdate{AltText: body.AltText, SortOrder: body.SortOrder, IsPrimary: body.IsPrimary})
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, media)
+}
+
+func (deps Dependencies) handleSupplierMediaDelete(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	if err := deps.Core.DeleteMedia(r.Context(), supplierID, chi.URLParam(r, "id"), chi.URLParam(r, "media_id"), subject); err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (deps Dependencies) handleSupplierReadiness(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	readiness, err := deps.Core.GetPublicationReadiness(r.Context(), supplierID, chi.URLParam(r, "id"), subject)
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, readiness)
+}
+
+func (deps Dependencies) handleSupplierPublish(w http.ResponseWriter, r *http.Request) {
+	subject, supplierID, ok := deps.supplierID(w, r)
+	if !ok {
+		return
+	}
+	publication, err := deps.Core.PublishProduct(r.Context(), supplierID, chi.URLParam(r, "id"), subject)
+	if err != nil {
+		actorhttp.WriteCoreError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, publication)
 }
 
 func (deps Dependencies) handleSupplierInventory(w http.ResponseWriter, r *http.Request) {
