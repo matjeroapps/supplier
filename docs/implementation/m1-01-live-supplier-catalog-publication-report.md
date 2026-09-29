@@ -89,14 +89,16 @@ Readiness is evaluated in Core, not in the browser. Publication is transactional
 
 Passed:
 
-- Core: `gofmt`, `go vet ./...`, `go test ./...`, focused `go test ./modules/commerce ./internal/coreapi`, and focused race tests. Static security review covered subject-derived ownership, service-auth boundaries, SQL parameterization, and server-side readiness.
-- Supplier: `gofmt`, `go vet ./...`, `go test ./...`, focused race tests, frontend typecheck, frontend tests, and frontend production build. Static security review covered BFF authority boundaries and error delegation.
-- Seller: `gofmt`, `go vet ./...`, `go test ./...`, focused race tests, frontend typecheck, frontend tests, and frontend production build.
+- Core: compact full suite `GOMAXPROCS=2 go test -p 1 -count=1 -timeout=20m ./...`, `gofmt`, `go vet ./...`, focused race tests, and `make openapi-check`. Static security review covered subject-derived ownership, service-auth boundaries, SQL parameterization, and server-side readiness.
+- Supplier: compact full Go suite `GOMAXPROCS=2 go test -p 1 -count=1 -timeout=10m ./...`, `gofmt`, `go vet ./...`, focused race tests, `make openapi-check`, `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build --workspaces --if-present`. Static security review covered BFF authority boundaries and error delegation.
+- Seller: compact full Go suite `GOMAXPROCS=2 go test -p 1 -count=1 -timeout=15m ./...`, `gofmt`, `go vet ./...`, focused race tests, `make openapi-check`, and the complete workspace lint/typecheck/test/build commands.
 - Code-first OpenAPI generators completed and generated documents changed with the route/model additions.
 
 The repository `openapi-check` targets compare generated files with the committed baseline; after the final commits, `make openapi-check` passed in Core, Supplier, and Seller.
 
 The Codex Security diff-scan worker was started for Core, but its discovery artifact was unavailable in this environment; no security PASS is claimed from that worker.
+
+Remote CI is not green because GitHub Actions did not start the jobs. The check annotations state: `The job was not started because recent account payments have failed or your spending limit needs to be increased.` This is an external repository-account billing blocker, not a test result.
 
 # Live Infrastructure Verification
 
@@ -121,6 +123,7 @@ Static and unit coverage passed for the changed Core/Supplier/Seller packages. P
 - The UI/UX Pro Max command was attempted but `uipro` was not installed (`command not found`), so no new guided visual workspace was designed; only minimal wiring was made to the existing workspace.
 - No Seller Import implementation was added.
 - No live cross-service or E2E evidence is available until Docker services can be started.
+- Completion remains conditional until GitHub Actions billing/spending-limit remediation allows all PR checks to run and pass.
 
 # Files Changed
 
