@@ -101,7 +101,7 @@ From `platform-infra/`, Compose validation passed, Zitadel was reachable and hea
 - Local Supplier code gates: PASS.
 - Fresh targeted Supplier container build and runtime probes: PASS.
 - Platform-infra source changes: none.
-- Pull request state observed 2026-10-01 02:00 +03:00: OPEN, non-draft, head `37e904504a1bbc10a87e01b1b2c0c292329cb6e9`, target `main`, review decision not yet recorded, merge state `UNSTABLE`.
-- Remote checks observed at that time: `independence` PASS; `backend`, `frontend`, and `security` IN_PROGRESS; `openapi` QUEUED. These remote states are reported separately from the local PASS results and may change after this report revision.
+- Pull request state observed 2026-10-01 02:01 +03:00 before this final documentation reconciliation push: OPEN, non-draft, head `77d8def12628fab749d792a50d6ad2a733416bf9`, target `main`, review decision not yet recorded, merge state `UNSTABLE`.
+- Remote checks observed at that time: `backend`, `independence`, `openapi`, `frontend`, and `security` QUEUED for the reconciled head. These remote states are reported separately from the local PASS results and will be rechecked after this documentation push.
 - Merge state: not merged; no merge action is authorized by this task.
 - M8-01 gate: NOT APPROVED. Later remediation remains ordered and outstanding.
