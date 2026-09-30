@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
 	"github.com/matjeroapps/supplier/internal/config"
 )
@@ -15,14 +15,7 @@ import (
 type Shutdown func(context.Context) error
 
 func Init(ctx context.Context, cfg config.Config) (Shutdown, error) {
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(cfg.ServiceName),
-			semconv.DeploymentEnvironmentName(cfg.Environment),
-		),
-	)
+	res, err := newResource(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create otel resource: %w", err)
 	}
@@ -33,4 +26,19 @@ func Init(ctx context.Context, cfg config.Config) (Shutdown, error) {
 	otel.SetTracerProvider(provider)
 
 	return provider.Shutdown, nil
+}
+
+func newResource(cfg config.Config) (*resource.Resource, error) {
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			"",
+			attribute.String("service.name", cfg.ServiceName),
+			attribute.String("deployment.environment.name", cfg.Environment),
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
