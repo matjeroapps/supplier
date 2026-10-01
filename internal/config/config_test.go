@@ -52,6 +52,25 @@ func TestLoadZitadelAudienceOverride(t *testing.T) {
 	}
 }
 
+func TestLoadCORSAllowedOrigins(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", " http://localhost:5175,https://supplier.example.test ")
+
+	cfg, err := Load("supplier-api")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	want := []string{"http://localhost:5175", "https://supplier.example.test"}
+	if len(cfg.CORSAllowedOrigins) != len(want) {
+		t.Fatalf("CORSAllowedOrigins length = %d, expected %d", len(cfg.CORSAllowedOrigins), len(want))
+	}
+	for i := range want {
+		if cfg.CORSAllowedOrigins[i] != want[i] {
+			t.Fatalf("CORSAllowedOrigins[%d] = %q, expected %q", i, cfg.CORSAllowedOrigins[i], want[i])
+		}
+	}
+}
+
 func TestLoadRejectsInvalidShutdownTimeout(t *testing.T) {
 	t.Setenv("SHUTDOWN_TIMEOUT_SECONDS", "nope")
 

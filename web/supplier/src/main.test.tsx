@@ -387,6 +387,28 @@ describe('Supplier Portal App Component', () => {
     expect(screen.getByText('supplier_boss')).toBeDefined();
   });
 
+  it('renders authenticated non-pilot empty state when no supplier profile is linked', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (urlStr.includes('/v1/bootstrap')) {
+        return new Response(JSON.stringify(mockBootstrap), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (urlStr.includes('/v1/supplier/profile')) {
+        return new Response(JSON.stringify({ error: { code: 'not_found', message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      }
+      throw new Error(`unexpected request: ${urlStr}`);
+    });
+
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={createMockAuthClient()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No Supplier Profile Configured')).toBeDefined();
+    });
+
+    expect(screen.getByText('supplier_boss')).toBeDefined();
+    expect(screen.queryByText('Something went wrong')).toBeNull();
+  });
+
   it('navigates between all 8 workspaces', async () => {
     render(<App initialPath="/dashboard" initialLocale="en" authClient={createMockAuthClient()} />);
 

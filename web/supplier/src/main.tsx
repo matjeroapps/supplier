@@ -109,6 +109,7 @@ export function App({ initialPath, initialLocale, authClient }: { initialPath?: 
 
   // ── UI state ──
   const [error, setError] = React.useState<string | null>(null);
+  const [supplierProfileMissing, setSupplierProfileMissing] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null);
   const [currentPath, setCurrentPath] = React.useState(() => {
@@ -213,11 +214,57 @@ export function App({ initialPath, initialLocale, authClient }: { initialPath?: 
       try {
         setLoading(true);
         setError(null);
+        setSupplierProfileMissing(false);
         setIsForbidden(false);
 
-        const [bootRes, profileRes, marketsRes, locationsRes, productsRes, offersRes, inventoryRes, syncRes, retailRes, storesRes] = await Promise.all([
-          api.get(`/v1/bootstrap?locale=${activeLocale}`),
-          api.get(`/v1/supplier/profile?locale=${activeLocale}`),
+        const bootRes = await api.get(`/v1/bootstrap?locale=${activeLocale}`);
+        if (!active) return;
+
+        if (bootRes.status === 403) {
+          setIsForbidden(true);
+          setLoading(false);
+          return;
+        }
+
+        if (!bootRes.ok) {
+          setError(copy.common.error);
+          setLoading(false);
+          return;
+        }
+
+        setBootstrap(await bootRes.json() as BootstrapPayload);
+
+        const profileRes = await api.get(`/v1/supplier/profile?locale=${activeLocale}`);
+        if (!active) return;
+
+        if (profileRes.status === 403) {
+          setIsForbidden(true);
+          setLoading(false);
+          return;
+        }
+
+        if (profileRes.status === 404) {
+          setSupplier(null);
+          setSupplierProfileMissing(true);
+          setMarkets([]);
+          setLocations([]);
+          setProducts([]);
+          setOffers([]);
+          setSnapshots([]);
+          setSyncJobs([]);
+          setRetailCapability(null);
+          setStores([]);
+          setLoading(false);
+          return;
+        }
+
+        if (!profileRes.ok) {
+          setError(copy.common.error);
+          setLoading(false);
+          return;
+        }
+
+        const [marketsRes, locationsRes, productsRes, offersRes, inventoryRes, syncRes, retailRes, storesRes] = await Promise.all([
           api.get(`/v1/supplier/markets?locale=${activeLocale}`),
           api.get(`/v1/supplier/locations?locale=${activeLocale}`),
           api.get(`/v1/supplier/products?locale=${activeLocale}`),
@@ -229,19 +276,6 @@ export function App({ initialPath, initialLocale, authClient }: { initialPath?: 
         ]);
         if (!active) return;
 
-        if (bootRes.status === 403 || profileRes.status === 403) {
-          setIsForbidden(true);
-          setLoading(false);
-          return;
-        }
-
-        if (!bootRes.ok || !profileRes.ok) {
-          setError(copy.common.error);
-          setLoading(false);
-          return;
-        }
-
-        setBootstrap(await bootRes.json() as BootstrapPayload);
         const profile = await profileRes.json() as { supplier: Supplier };
         setSupplier(profile.supplier);
         setProfileName(profile.supplier.name);
@@ -953,6 +987,16 @@ export function App({ initialPath, initialLocale, authClient }: { initialPath?: 
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px' }}>
         {error && <ErrorState message={error} onRetry={() => window.location.reload()} />}
+        {supplierProfileMissing && (
+          <Card variant="glass">
+            <CardContent style={{ textAlign: 'center', padding: '32px' }}>
+              <CardTitle>No Supplier Profile Configured</CardTitle>
+              <p style={{ marginTop: '8px', color: '#4b5563' }}>
+                The verifier is authenticated through MatjerHub SSO, but no Core supplier profile is linked yet. No pilot supplier, catalog, offer, or inventory data was created.
+              </p>
+            </CardContent>
+          </Card>
+        )}
         {actionSuccess && (
           <div role="status" style={{ padding: '12px 16px', background: '#d1fae5', borderRadius: '8px', color: '#065f46', fontWeight: 500 }}>
             {actionSuccess}

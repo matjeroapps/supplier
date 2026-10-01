@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,6 +39,7 @@ type Config struct {
 	ServiceName     string
 	Environment     string
 	Addr            string
+	AllowedOrigins  []string
 	ShutdownTimeout time.Duration
 }
 
@@ -46,6 +48,7 @@ func ConfigFrom(cfg config.Config) Config {
 		ServiceName:     cfg.ServiceName,
 		Environment:     cfg.Environment,
 		Addr:            cfg.HTTPAddr,
+		AllowedOrigins:  cfg.CORSAllowedOrigins,
 		ShutdownTimeout: cfg.ShutdownTimeout,
 	}
 }
@@ -56,6 +59,7 @@ func NewRouter(app App) chi.Router {
 	}
 
 	r := chi.NewRouter()
+	r.Use(corsMiddleware(app.Config.AllowedOrigins))
 	r.Use(middleware.RequestID)
 	r.Use(correlationMiddleware)
 	r.Use(recoverMiddleware(app.Logger))
@@ -64,6 +68,51 @@ func NewRouter(app App) chi.Router {
 	r.Get("/readyz", readyHandler(app.Config, app.Ready))
 
 	return r
+}
+
+func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
+	allowed := make(map[string]struct{}, len(allowedOrigins))
+	allowAny := false
+	for _, origin := range allowedOrigins {
+		origin = strings.TrimSpace(origin)
+		if origin == "" {
+			continue
+		}
+		if origin == "*" {
+			allowAny = true
+			continue
+		}
+		allowed[origin] = struct{}{}
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			originAllowed := false
+			if origin != "" {
+				if allowAny {
+					originAllowed = true
+				} else if _, ok := allowed[origin]; ok {
+					originAllowed = true
+				}
+			}
+
+			if originAllowed {
+				w.Header().Add("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Request-Id,X-Correlation-Id,Accept-Language")
+				w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id,X-Correlation-Id")
+			}
+
+			if r.Method == http.MethodOptions && originAllowed {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func Run(ctx context.Context, cfg Config, logger *slog.Logger, handler http.Handler) error {

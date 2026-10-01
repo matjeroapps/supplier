@@ -50,3 +50,53 @@ func TestReadyzUsesReadinessCheck(t *testing.T) {
 		t.Fatalf("status = %d", resp.Code)
 	}
 }
+
+func TestCORSPreflightAllowsConfiguredSupplierOriginBeforeAuth(t *testing.T) {
+	router := NewRouter(App{
+		Config: Config{
+			ServiceName:    "supplier-api",
+			AllowedOrigins: []string{"http://localhost:5175"},
+		},
+	})
+	router.Get("/v1/bootstrap", func(w http.ResponseWriter, r *http.Request) {
+		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "/v1/bootstrap?locale=en", nil)
+	req.Header.Set("Origin", "http://localhost:5175")
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	req.Header.Set("Access-Control-Request-Headers", "authorization")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("status = %d", resp.Code)
+	}
+	if got := resp.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5175" {
+		t.Fatalf("Access-Control-Allow-Origin = %q", got)
+	}
+	if got := resp.Header().Get("Access-Control-Allow-Headers"); got == "" {
+		t.Fatal("missing Access-Control-Allow-Headers")
+	}
+}
+
+func TestCORSDoesNotReflectUnconfiguredOrigins(t *testing.T) {
+	router := NewRouter(App{
+		Config: Config{
+			ServiceName:    "supplier-api",
+			AllowedOrigins: []string{"http://localhost:5175"},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "/v1/bootstrap?locale=en", nil)
+	req.Header.Set("Origin", "http://evil.test")
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	if got := resp.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Fatalf("unexpected Access-Control-Allow-Origin = %q", got)
+	}
+}

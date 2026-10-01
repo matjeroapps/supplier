@@ -17,6 +17,7 @@ type Config struct {
 	ZitadelIssuer       string
 	ZitadelDiscoveryURL string
 	ZitadelAudience     string
+	CORSAllowedOrigins  []string
 	OpenAPIDocsEnabled  bool
 	ShutdownTimeout     time.Duration
 
@@ -69,6 +70,7 @@ func Load(serviceName string) (Config, error) {
 		ZitadelIssuer:        zitadelIssuer,
 		ZitadelDiscoveryURL:  stringEnv("ZITADEL_DISCOVERY_URL", zitadelIssuer),
 		ZitadelAudience:      stringEnv("ZITADEL_AUDIENCE", serviceName),
+		CORSAllowedOrigins:   stringSliceEnv("CORS_ALLOWED_ORIGINS", nil),
 		OpenAPIDocsEnabled:   boolEnv("OPENAPI_DOCS_ENABLED", stringEnv("APP_ENV", "development") != "production"),
 		ShutdownTimeout:      time.Duration(timeoutSeconds) * time.Second,
 		PlatformDomain:       stringEnv("PLATFORM_DOMAIN", "matjero.com"),
