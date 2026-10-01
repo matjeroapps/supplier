@@ -51,6 +51,125 @@ func TestOIDCVerifierAcceptsZitadelStyleToken(t *testing.T) {
 	}
 }
 
+func TestOIDCVerifierSplitDiscovery(t *testing.T) {
+	publicIssuer := "http://public-zitadel.example.com"
+	issuer := newOIDCSplitIssuer(t, publicIssuer)
+
+	verifier, err := NewOIDCVerifier(context.Background(), Config{
+		IssuerURL:    publicIssuer,
+		DiscoveryURL: issuer.URL,
+		Audience:     "proj-supplier-123",
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCVerifier with split discovery returned error: %v", err)
+	}
+
+	token := signJWT(t, issuer.privateKey, publicIssuer, "proj-supplier-123", map[string]any{
+		"email":              "supplier@example.test",
+		"preferred_username": "supplier-owner",
+		"urn:zitadel:iam:org:project:roles": map[string]any{
+			"supplier_owner": map[string]any{"proj-supplier-123": "Matjero"},
+		},
+	})
+
+	principal, err := verifier.Verify(context.Background(), token)
+	if err != nil {
+		t.Fatalf("Verify returned error: %v", err)
+	}
+
+	if principal.Issuer != publicIssuer {
+		t.Fatalf("Issuer = %q, expected %q", principal.Issuer, publicIssuer)
+	}
+	if !principal.HasRole(RoleSupplierOwner) {
+		t.Fatal("expected supplier_owner role")
+	}
+
+	wrongIssuerToken := signJWT(t, issuer.privateKey, "http://wrong-issuer.example.com", "proj-supplier-123", nil)
+	if _, err := verifier.Verify(context.Background(), wrongIssuerToken); err == nil {
+		t.Fatal("expected error for token signed by split-discovery key claiming wrong public issuer")
+	}
+}
+
+func TestOIDCVerifierRejectsWrongIssuer(t *testing.T) {
+	issuer := newOIDCIssuer(t)
+
+	verifier, err := NewOIDCVerifier(context.Background(), Config{
+		IssuerURL: issuer.URL,
+		Audience:  "supplier-api",
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCVerifier returned error: %v", err)
+	}
+
+	token := signJWT(t, issuer.privateKey, "http://wrong-issuer.com", "supplier-api", nil)
+
+	if _, err := verifier.Verify(context.Background(), token); err == nil {
+		t.Fatal("expected error for token with wrong issuer")
+	}
+}
+
+func TestOIDCVerifierRejectsWrongAudience(t *testing.T) {
+	issuer := newOIDCIssuer(t)
+
+	verifier, err := NewOIDCVerifier(context.Background(), Config{
+		IssuerURL: issuer.URL,
+		Audience:  "supplier-api",
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCVerifier returned error: %v", err)
+	}
+
+	token := signJWT(t, issuer.privateKey, issuer.URL, "wrong-audience", nil)
+
+	if _, err := verifier.Verify(context.Background(), token); err == nil {
+		t.Fatal("expected error for token with wrong audience")
+	}
+}
+
+func TestOIDCVerifierRejectsWrongSignature(t *testing.T) {
+	issuer := newOIDCIssuer(t)
+
+	verifier, err := NewOIDCVerifier(context.Background(), Config{
+		IssuerURL: issuer.URL,
+		Audience:  "supplier-api",
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCVerifier returned error: %v", err)
+	}
+
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+
+	token := signJWT(t, otherKey, issuer.URL, "supplier-api", nil)
+
+	if _, err := verifier.Verify(context.Background(), token); err == nil {
+		t.Fatal("expected error for token signed with untrusted key")
+	}
+}
+
+func TestOIDCVerifierRejectsExpiredToken(t *testing.T) {
+	issuer := newOIDCIssuer(t)
+
+	verifier, err := NewOIDCVerifier(context.Background(), Config{
+		IssuerURL: issuer.URL,
+		Audience:  "supplier-api",
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCVerifier returned error: %v", err)
+	}
+
+	expiredTime := time.Now().Add(-10 * time.Minute).Unix()
+	token := signJWT(t, issuer.privateKey, issuer.URL, "supplier-api", map[string]any{
+		"exp": expiredTime,
+	})
+
+	if _, err := verifier.Verify(context.Background(), token); err == nil {
+		t.Fatal("expected error for expired token")
+	}
+}
+
 func TestBearerTokenRequiresAuthorizationHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
@@ -82,6 +201,39 @@ func newOIDCIssuer(t *testing.T) oidcIssuer {
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"issuer":   issuer.URL,
+			"jwks_uri": issuer.URL + "/keys",
+		})
+	})
+	mux.HandleFunc("/keys", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"keys": []map[string]any{jwkForRSA(&privateKey.PublicKey, issuer.keyID)},
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	issuer.Server = server
+	t.Cleanup(server.Close)
+
+	return issuer
+}
+
+func newOIDCSplitIssuer(t *testing.T, publicIssuer string) oidcIssuer {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+
+	issuer := oidcIssuer{
+		privateKey: privateKey,
+		keyID:      "test-key",
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"issuer":   publicIssuer,
 			"jwks_uri": issuer.URL + "/keys",
 		})
 	})

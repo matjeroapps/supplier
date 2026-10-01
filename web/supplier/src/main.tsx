@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { createApiClient } from './lib/api';
+import { createOidcAuthClient, type AuthClient, type AuthState } from './auth/oidc';
 import { directionFor, messages, type Locale } from './i18n/locales';
 import '@matjerhub/ui-sdk/styles.css';
 import {
@@ -46,7 +47,7 @@ type AffiliatedStore = { id: string; seller_id: string; market_code: string; cod
 // ─── App bootstrap ───────────────────────────────────────────────────────────
 
 const defaultLocale = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('locale') === 'ar' ? 'ar' : 'en') satisfies Locale;
-const api = createApiClient({ baseUrl: import.meta.env.VITE_API_BASE_URL ?? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000') });
+const defaultAuthClient = createOidcAuthClient();
 
 if (typeof document !== 'undefined') {
   document.documentElement.lang = defaultLocale;
@@ -55,7 +56,23 @@ if (typeof document !== 'undefined') {
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 
-export function App({ initialPath, initialLocale }: { initialPath?: string; initialLocale?: Locale } = {}) {
+export function App({ initialPath, initialLocale, authClient }: { initialPath?: string; initialLocale?: Locale; authClient?: AuthClient } = {}) {
+  const activeAuthClient = React.useMemo(() => authClient ?? defaultAuthClient, [authClient]);
+  const [authState, setAuthState] = React.useState<AuthState>(() => activeAuthClient.getState());
+
+  React.useEffect(() => {
+    setAuthState(activeAuthClient.getState());
+    return activeAuthClient.subscribe((state) => {
+      setAuthState(state);
+    });
+  }, [activeAuthClient]);
+
+  const api = React.useMemo(() => createApiClient({
+    baseUrl: import.meta.env.VITE_API_BASE_URL ?? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
+    getAccessToken: () => activeAuthClient.getAccessToken(),
+    renewToken: () => activeAuthClient.renewToken(),
+    onUnauthorized: () => { void activeAuthClient.clearSession({ error: 'Session expired' }); }
+  }), [activeAuthClient]);
   const activeLocale = initialLocale ?? (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('locale') === 'ar' ? 'ar' : 'en');
   const copy = messages[activeLocale];
 
@@ -147,14 +164,57 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
   const [profileStatus, setProfileStatus] = React.useState('active');
   const [profileSettings, setProfileSettings] = React.useState('{"tone":"stable"}');
 
+  // ─── Callback & Auth routing ───────────────────────────────────────────────
+
+  const [isCallbackProcessing, setIsCallbackProcessing] = React.useState(() => {
+    if (initialPath === '/auth/callback') return true;
+    return typeof window !== 'undefined' && window.location.pathname === '/auth/callback';
+  });
+  const [callbackError, setCallbackError] = React.useState<string | null>(null);
+  const [isForbidden, setIsForbidden] = React.useState(false);
+
+  React.useEffect(() => {
+    if (currentPath === '/auth/callback') {
+      let active = true;
+      setIsCallbackProcessing(true);
+      setCallbackError(null);
+      activeAuthClient.handleCallback()
+        .then((targetPath) => {
+          if (active) {
+            setIsCallbackProcessing(false);
+            const safePath = targetPath || '/dashboard';
+            setCurrentPath(safePath);
+            if (typeof window !== 'undefined') {
+              window.history.pushState({}, '', safePath);
+            }
+          }
+        })
+        .catch((err) => {
+          if (active) {
+            setIsCallbackProcessing(false);
+            setCallbackError(err instanceof Error ? err.message : 'Callback failed');
+          }
+        });
+      return () => { active = false; };
+    }
+  }, [currentPath, activeAuthClient]);
+
   // ─── Load all data ────────────────────────────────────────────────────────
 
   React.useEffect(() => {
+    if (!authState.isAuthenticated || currentPath === '/auth/callback') {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     async function load() {
       try {
         setLoading(true);
+        setError(null);
+        setIsForbidden(false);
+
         const [bootRes, profileRes, marketsRes, locationsRes, productsRes, offersRes, inventoryRes, syncRes, retailRes, storesRes] = await Promise.all([
           api.get(`/v1/bootstrap?locale=${activeLocale}`),
           api.get(`/v1/supplier/profile?locale=${activeLocale}`),
@@ -168,6 +228,18 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
           api.get(`/v1/supplier/stores?locale=${activeLocale}`).catch(() => null),
         ]);
         if (!active) return;
+
+        if (bootRes.status === 403 || profileRes.status === 403) {
+          setIsForbidden(true);
+          setLoading(false);
+          return;
+        }
+
+        if (!bootRes.ok || !profileRes.ok) {
+          setError(copy.common.error);
+          setLoading(false);
+          return;
+        }
 
         setBootstrap(await bootRes.json() as BootstrapPayload);
         const profile = await profileRes.json() as { supplier: Supplier };
@@ -191,7 +263,7 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
 
     void load();
     return () => { active = false; };
-  }, [activeLocale]);
+  }, [activeLocale, authState.isAuthenticated, currentPath, api, copy.common.error]);
 
   // ─── Action helpers ───────────────────────────────────────────────────────
 
@@ -816,6 +888,55 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
     return renderDashboard();
   }
 
+  if (currentPath === '/auth/callback') {
+    if (isCallbackProcessing) {
+      return <LoadingState title={copy.common.loading} />;
+    }
+    if (callbackError || authState.error) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '24px' }}>
+          <Card variant="glass" style={{ maxWidth: '420px', width: '100%' }}>
+            <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
+              <CardTitle>{copy.appName}</CardTitle>
+              <div style={{ padding: '8px 12px', background: '#fef2f2', color: '#991b1b', borderRadius: '6px', fontSize: '0.875rem' }}>
+                {callbackError || authState.error}
+              </div>
+              <Button onClick={() => void activeAuthClient.login('/')}>
+                {activeLocale === 'ar' ? 'تسجيل الدخول' : 'Log In'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  }
+
+  if (!authState.isAuthenticated) {
+    if (authState.isLoading) {
+      return <LoadingState title={copy.common.loading} />;
+    }
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '24px', background: '#f9fafb' }}>
+        <Card variant="glass" style={{ maxWidth: '420px', width: '100%' }}>
+          <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
+            <CardTitle>{copy.appName}</CardTitle>
+            <p style={{ color: '#4b5563', fontSize: '0.95rem' }}>
+              {activeLocale === 'ar' ? 'يرجى تسجيل الدخول للوصول إلى لوحة المورد' : 'Please log in to access the supplier portal.'}
+            </p>
+            {authState.error && (
+              <div style={{ padding: '8px 12px', background: '#fef2f2', color: '#991b1b', borderRadius: '6px', fontSize: '0.875rem' }}>
+                {authState.error}
+              </div>
+            )}
+            <Button onClick={() => void activeAuthClient.login(currentPath)}>
+              {activeLocale === 'ar' ? 'تسجيل الدخول عبر Zitadel' : 'Log In with Zitadel'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <DashboardLayout
       appTitle={copy.appName}
@@ -824,10 +945,11 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
       onNavigate={navigate}
       workspaces={[{ id: 'supplier-main', name: supplier?.name || 'Main Catalog', type: 'supplier' }]}
       user={{
-        name: bootstrap?.principal?.preferred_username || 'Supplier Admin',
-        email: 'supplier@matjerhub.com',
+        name: authState.user?.preferred_username || bootstrap?.principal?.preferred_username || 'Supplier Admin',
+        email: authState.user?.email || 'supplier@matjerhub.com',
         role: 'Supplier Admin',
       }}
+      onSignOut={() => void activeAuthClient.logout()}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px' }}>
         {error && <ErrorState message={error} onRetry={() => window.location.reload()} />}
@@ -836,7 +958,22 @@ export function App({ initialPath, initialLocale }: { initialPath?: string; init
             {actionSuccess}
           </div>
         )}
-        {loading ? <LoadingState title={copy.common.loading} /> : renderCurrentView()}
+        {isForbidden ? (
+          <Card variant="glass">
+            <CardContent style={{ textAlign: 'center', padding: '32px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#dc2626' }}>
+                {activeLocale === 'ar' ? '403 - غير مصرح' : '403 Forbidden'}
+              </h2>
+              <p style={{ marginTop: '8px', color: '#4b5563' }}>
+                {activeLocale === 'ar' ? 'ليس لديك صلاحية للوصول إلى هذا المورد.' : 'You do not have permission to access this resource.'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : loading ? (
+          <LoadingState title={copy.common.loading} />
+        ) : (
+          renderCurrentView()
+        )}
       </div>
     </DashboardLayout>
   );

@@ -21,6 +21,35 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.ZitadelAudience != "admin-api" {
 		t.Fatalf("ZitadelAudience = %q", cfg.ZitadelAudience)
 	}
+	if cfg.ZitadelDiscoveryURL != cfg.ZitadelIssuer {
+		t.Fatalf("ZitadelDiscoveryURL default = %q, expected %q", cfg.ZitadelDiscoveryURL, cfg.ZitadelIssuer)
+	}
+}
+
+func TestLoadZitadelDiscoveryURL(t *testing.T) {
+	t.Setenv("ZITADEL_DISCOVERY_URL", "http://zitadel-internal:8080")
+
+	cfg, err := Load("supplier-api")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.ZitadelDiscoveryURL != "http://zitadel-internal:8080" {
+		t.Fatalf("ZitadelDiscoveryURL = %q, expected %q", cfg.ZitadelDiscoveryURL, "http://zitadel-internal:8080")
+	}
+}
+
+func TestLoadZitadelAudienceOverride(t *testing.T) {
+	t.Setenv("ZITADEL_AUDIENCE", "custom-supplier-project-id")
+
+	cfg, err := Load("supplier-api")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.ZitadelAudience != "custom-supplier-project-id" {
+		t.Fatalf("ZitadelAudience = %q, expected %q", cfg.ZitadelAudience, "custom-supplier-project-id")
+	}
 }
 
 func TestLoadRejectsInvalidShutdownTimeout(t *testing.T) {
