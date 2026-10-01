@@ -9,15 +9,17 @@ import (
 )
 
 type Config struct {
-	ServiceName        string
-	Environment        string
-	HTTPAddr           string
-	RedisAddr          string
-	RabbitMQURL        string
-	ZitadelIssuer      string
-	ZitadelAudience    string
-	OpenAPIDocsEnabled bool
-	ShutdownTimeout    time.Duration
+	ServiceName         string
+	Environment         string
+	HTTPAddr            string
+	RedisAddr           string
+	RabbitMQURL         string
+	ZitadelIssuer       string
+	ZitadelDiscoveryURL string
+	ZitadelAudience     string
+	CORSAllowedOrigins  []string
+	OpenAPIDocsEnabled  bool
+	ShutdownTimeout     time.Duration
 
 	// PlatformDomain is the base domain under which platform-generated store
 	// subdomains are allocated (e.g. "<store-code>.matjero.com"). It is
@@ -57,14 +59,18 @@ func Load(serviceName string) (Config, error) {
 		return Config{}, err
 	}
 
+	zitadelIssuer := stringEnv("ZITADEL_ISSUER", "http://localhost:8081")
+
 	return Config{
 		ServiceName:          serviceName,
 		Environment:          stringEnv("APP_ENV", "development"),
 		HTTPAddr:             stringEnv("HTTP_ADDR", ":8080"),
 		RedisAddr:            stringEnv("REDIS_ADDR", "localhost:6379"),
 		RabbitMQURL:          stringEnv("RABBITMQ_URL", "amqp://commerce:commerce@localhost:5672/"),
-		ZitadelIssuer:        stringEnv("ZITADEL_ISSUER", "http://localhost:8081"),
+		ZitadelIssuer:        zitadelIssuer,
+		ZitadelDiscoveryURL:  stringEnv("ZITADEL_DISCOVERY_URL", zitadelIssuer),
 		ZitadelAudience:      stringEnv("ZITADEL_AUDIENCE", serviceName),
+		CORSAllowedOrigins:   stringSliceEnv("CORS_ALLOWED_ORIGINS", nil),
 		OpenAPIDocsEnabled:   boolEnv("OPENAPI_DOCS_ENABLED", stringEnv("APP_ENV", "development") != "production"),
 		ShutdownTimeout:      time.Duration(timeoutSeconds) * time.Second,
 		PlatformDomain:       stringEnv("PLATFORM_DOMAIN", "matjero.com"),

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { directionFor, messages, locales, type Locale } from './i18n/locales';
 import { App } from './main';
+import type { AuthClient, AuthState } from './auth/oidc';
 
 // ─── Locale unit tests ─────────────────────────────────────────────────────
 
@@ -324,6 +325,42 @@ function setupMockFetch(overrides: Record<string, unknown> = {}) {
   return fetchMock;
 }
 
+function createMockAuthClient(overrides?: Partial<AuthClient> & { state?: Partial<AuthState> }): AuthClient {
+  let state: AuthState = {
+    isAuthenticated: true,
+    user: {
+      subject: 'usr_sup_123',
+      preferred_username: 'supplier_boss',
+      email: 'supplier@matjerhub.com',
+      roles: ['supplier_owner']
+    },
+    isLoading: false,
+    error: null,
+    ...overrides?.state
+  };
+
+  const listeners = new Set<(s: AuthState) => void>();
+
+  return {
+    getAccessToken: vi.fn(async () => 'mock-bearer-token-123'),
+    renewToken: vi.fn(async () => 'mock-bearer-token-123'),
+    clearSession: vi.fn(async () => {
+      state = { isAuthenticated: false, user: null, isLoading: false, error: null };
+      listeners.forEach((cb) => cb(state));
+    }),
+    login: vi.fn(async () => {}),
+    handleCallback: vi.fn(async () => '/dashboard'),
+    logout: vi.fn(async () => {}),
+    getUser: () => state.user,
+    getState: () => state,
+    subscribe: (cb: (s: AuthState) => void) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    ...overrides
+  };
+}
+
 describe('Supplier Portal App Component', () => {
   beforeEach(() => {
     window.history.pushState({}, '', '/dashboard');
@@ -334,8 +371,8 @@ describe('Supplier Portal App Component', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders dashboard with KPI cards and supplier information', async () => {
-    render(<App initialPath="/dashboard" initialLocale="en" />);
+  it('renders dashboard with KPI cards and supplier information when authenticated', async () => {
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={createMockAuthClient()} />);
 
     expect(screen.getByText(messages.en.common.loading)).toBeDefined();
 
@@ -350,8 +387,30 @@ describe('Supplier Portal App Component', () => {
     expect(screen.getByText('supplier_boss')).toBeDefined();
   });
 
+  it('renders authenticated non-pilot empty state when no supplier profile is linked', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (urlStr.includes('/v1/bootstrap')) {
+        return new Response(JSON.stringify(mockBootstrap), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (urlStr.includes('/v1/supplier/profile')) {
+        return new Response(JSON.stringify({ error: { code: 'not_found', message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      }
+      throw new Error(`unexpected request: ${urlStr}`);
+    });
+
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={createMockAuthClient()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No Supplier Profile Configured')).toBeDefined();
+    });
+
+    expect(screen.getByText('supplier_boss')).toBeDefined();
+    expect(screen.queryByText('Something went wrong')).toBeNull();
+  });
+
   it('navigates between all 8 workspaces', async () => {
-    render(<App initialPath="/dashboard" initialLocale="en" />);
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Apex Wholesale Hub')).toBeDefined();
@@ -407,7 +466,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('product authoring: creates product with EN/AR fields, SKU code, barcode, and categories', async () => {
-    render(<App initialPath="/products" initialLocale="en" />);
+    render(<App initialPath="/products" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('cotton-hoodie')).toBeDefined();
@@ -433,7 +492,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('media workflow: simulates presigned S3 upload, primary image designation, and deletion', async () => {
-    render(<App initialPath="/products" initialLocale="en" />);
+    render(<App initialPath="/products" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('cotton-hoodie')).toBeDefined();
@@ -462,7 +521,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('market offers: creates offer with wholesale price, currency, and MOQ', async () => {
-    render(<App initialPath="/offers" initialLocale="en" />);
+    render(<App initialPath="/offers" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('250.00 EGP')).toBeDefined();
@@ -485,7 +544,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('inventory: adjusts stock with delta, reason, and movement type, and inspects movement history', async () => {
-    render(<App initialPath="/inventory" initialLocale="en" />);
+    render(<App initialPath="/inventory" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('sku_hoodie_m')).toBeDefined();
@@ -511,7 +570,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('fulfillment locations: lists locations and creates a new location', async () => {
-    render(<App initialPath="/locations" initialLocale="en" />);
+    render(<App initialPath="/locations" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Cairo Central Warehouse')).toBeDefined();
@@ -533,7 +592,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('integrations: displays sync jobs, triggers sync, and handles retry on failed job', async () => {
-    render(<App initialPath="/integrations" initialLocale="en" />);
+    render(<App initialPath="/integrations" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText('job_sync_1')).toBeDefined();
@@ -553,7 +612,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('ADR-019 retail capability: shows provisioned seller and creates direct retail store', async () => {
-    render(<App initialPath="/retail" initialLocale="en" />);
+    render(<App initialPath="/retail" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText(messages.en.retail.statusProvisioned)).toBeDefined();
@@ -578,7 +637,7 @@ describe('Supplier Portal App Component', () => {
 
   it('ADR-019 retail capability: provisions retail seller when not yet provisioned', async () => {
     setupMockFetch({ nullRetail: true });
-    render(<App initialPath="/retail" initialLocale="en" />);
+    render(<App initialPath="/retail" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText(messages.en.retail.notProvisioned)).toBeDefined();
@@ -600,7 +659,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('settings: updates supplier profile and saves settings', async () => {
-    render(<App initialPath="/settings" initialLocale="en" />);
+    render(<App initialPath="/settings" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText(messages.en.settings.supplierName)).toBeDefined();
@@ -616,7 +675,7 @@ describe('Supplier Portal App Component', () => {
   });
 
   it('renders Arabic interface with RTL direction and Arabic strings', async () => {
-    render(<App initialPath="/dashboard" initialLocale="ar" />);
+    render(<App initialPath="/dashboard" initialLocale="ar" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText(messages.ar.appName)).toBeDefined();
@@ -637,10 +696,96 @@ describe('Supplier Portal App Component', () => {
   it('displays error state when initial API request fails', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Core API Gateway Unreachable'));
 
-    render(<App initialPath="/dashboard" initialLocale="en" />);
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={createMockAuthClient()} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Core API Gateway Unreachable/)).toBeDefined();
+    });
+  });
+
+  it('no protected business requests run when unauthenticated', async () => {
+    const fetchMock = setupMockFetch();
+    const unauthClient = createMockAuthClient({
+      state: { isAuthenticated: false, user: null, isLoading: false, error: null }
+    });
+
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={unauthClient} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Log In with Zitadel')).toBeDefined();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows a fail-closed configuration error without protected requests', async () => {
+    const fetchMock = setupMockFetch();
+    const unconfiguredClient = createMockAuthClient({
+      state: {
+        isAuthenticated: false,
+        user: null,
+        isLoading: false,
+        error: 'Authentication configuration missing'
+      }
+    });
+
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={unconfiguredClient} />);
+
+    expect(await screen.findByText('Authentication configuration missing')).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('delegates sign out from the authenticated user menu', async () => {
+    const mockAuth = createMockAuthClient();
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={mockAuth} />);
+
+    await screen.findByText('Apex Wholesale Hub');
+    fireEvent.click(screen.getByText('supplier_boss'));
+    fireEvent.click(await screen.findByText('Sign Out'));
+
+    expect(mockAuth.logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('static callback routing handles /auth/callback and navigates to return path', async () => {
+    const mockAuth = createMockAuthClient({
+      handleCallback: vi.fn(async () => '/products')
+    });
+
+    render(<App initialPath="/auth/callback" initialLocale="en" authClient={mockAuth} />);
+
+    await waitFor(() => {
+      expect(mockAuth.handleCallback).toHaveBeenCalled();
+      expect(screen.getByText('cotton-hoodie')).toBeDefined();
+    });
+  });
+
+  it('clears session when receiving 401 unauthorized response', async () => {
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }));
+    const mockAuth = createMockAuthClient();
+
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={mockAuth} />);
+
+    await waitFor(() => {
+      expect(mockAuth.clearSession).toHaveBeenCalled();
+    });
+  });
+
+  it('renders 403 unauthorized state when receiving 403 forbidden response', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (urlStr.includes('/v1/bootstrap')) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const mockAuth = createMockAuthClient();
+
+    render(<App initialPath="/dashboard" initialLocale="en" authClient={mockAuth} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('403 Forbidden')).toBeDefined();
+      expect(screen.getByText('You do not have permission to access this resource.')).toBeDefined();
     });
   });
 });

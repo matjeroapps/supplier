@@ -26,7 +26,15 @@ func NewOIDCVerifier(ctx context.Context, cfg Config) (*OIDCVerifier, error) {
 		return nil, fmt.Errorf("audience is required")
 	}
 
-	provider, err := oidc.NewProvider(ctx, issuer)
+	discovery := NormalizeIssuer(cfg.DiscoveryURL)
+	providerCtx := ctx
+	providerURL := issuer
+	if discovery != "" && discovery != issuer {
+		providerCtx = oidc.InsecureIssuerURLContext(ctx, issuer)
+		providerURL = discovery
+	}
+
+	provider, err := oidc.NewProvider(providerCtx, providerURL)
 	if err != nil {
 		return nil, fmt.Errorf("discover oidc provider: %w", err)
 	}

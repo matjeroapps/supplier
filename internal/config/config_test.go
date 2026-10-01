@@ -21,6 +21,54 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.ZitadelAudience != "admin-api" {
 		t.Fatalf("ZitadelAudience = %q", cfg.ZitadelAudience)
 	}
+	if cfg.ZitadelDiscoveryURL != cfg.ZitadelIssuer {
+		t.Fatalf("ZitadelDiscoveryURL default = %q, expected %q", cfg.ZitadelDiscoveryURL, cfg.ZitadelIssuer)
+	}
+}
+
+func TestLoadZitadelDiscoveryURL(t *testing.T) {
+	t.Setenv("ZITADEL_DISCOVERY_URL", "http://zitadel-internal:8080")
+
+	cfg, err := Load("supplier-api")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.ZitadelDiscoveryURL != "http://zitadel-internal:8080" {
+		t.Fatalf("ZitadelDiscoveryURL = %q, expected %q", cfg.ZitadelDiscoveryURL, "http://zitadel-internal:8080")
+	}
+}
+
+func TestLoadZitadelAudienceOverride(t *testing.T) {
+	t.Setenv("ZITADEL_AUDIENCE", "custom-supplier-project-id")
+
+	cfg, err := Load("supplier-api")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.ZitadelAudience != "custom-supplier-project-id" {
+		t.Fatalf("ZitadelAudience = %q, expected %q", cfg.ZitadelAudience, "custom-supplier-project-id")
+	}
+}
+
+func TestLoadCORSAllowedOrigins(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", " http://localhost:5175,https://supplier.example.test ")
+
+	cfg, err := Load("supplier-api")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	want := []string{"http://localhost:5175", "https://supplier.example.test"}
+	if len(cfg.CORSAllowedOrigins) != len(want) {
+		t.Fatalf("CORSAllowedOrigins length = %d, expected %d", len(cfg.CORSAllowedOrigins), len(want))
+	}
+	for i := range want {
+		if cfg.CORSAllowedOrigins[i] != want[i] {
+			t.Fatalf("CORSAllowedOrigins[%d] = %q, expected %q", i, cfg.CORSAllowedOrigins[i], want[i])
+		}
+	}
 }
 
 func TestLoadRejectsInvalidShutdownTimeout(t *testing.T) {
