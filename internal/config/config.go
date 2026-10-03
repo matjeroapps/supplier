@@ -42,6 +42,12 @@ type Config struct {
 	CoreAPIToken string
 	// CoreAPITimeout bounds a single Core call.
 	CoreAPITimeout time.Duration
+
+	// SupplierConsoleRedirectsEnabled is the legacy-compatibility rollback
+	// flag (Feature 025). It is runtime-controlled server-side and defaults
+	// to false: every legacy route serves the legacy application until
+	// explicitly enabled. Flipping it never requires rebuilding the SPA.
+	SupplierConsoleRedirectsEnabled bool
 }
 
 func Load(serviceName string) (Config, error) {
@@ -62,20 +68,21 @@ func Load(serviceName string) (Config, error) {
 	zitadelIssuer := stringEnv("ZITADEL_ISSUER", "http://localhost:8081")
 
 	return Config{
-		ServiceName:          serviceName,
-		Environment:          stringEnv("APP_ENV", "development"),
-		HTTPAddr:             stringEnv("HTTP_ADDR", ":8080"),
-		RedisAddr:            stringEnv("REDIS_ADDR", "localhost:6379"),
-		RabbitMQURL:          stringEnv("RABBITMQ_URL", "amqp://commerce:commerce@localhost:5672/"),
-		ZitadelIssuer:        zitadelIssuer,
-		ZitadelDiscoveryURL:  stringEnv("ZITADEL_DISCOVERY_URL", zitadelIssuer),
-		ZitadelAudience:      stringEnv("ZITADEL_AUDIENCE", serviceName),
-		CORSAllowedOrigins:   stringSliceEnv("CORS_ALLOWED_ORIGINS", nil),
-		OpenAPIDocsEnabled:   boolEnv("OPENAPI_DOCS_ENABLED", stringEnv("APP_ENV", "development") != "production"),
-		ShutdownTimeout:      time.Duration(timeoutSeconds) * time.Second,
-		PlatformDomain:       stringEnv("PLATFORM_DOMAIN", "matjero.com"),
-		TrustedForwardedHost: boolEnv("TRUSTED_FORWARDED_HOST", false),
-		ReservedSubdomains:   stringSliceEnv("RESERVED_SUBDOMAINS", []string{"www", "api", "admin", "app", "cdn", "mail", "seller", "supplier", "static", "assets"}),
+		ServiceName:                     serviceName,
+		Environment:                     stringEnv("APP_ENV", "development"),
+		HTTPAddr:                        stringEnv("HTTP_ADDR", ":8080"),
+		RedisAddr:                       stringEnv("REDIS_ADDR", "localhost:6379"),
+		RabbitMQURL:                     stringEnv("RABBITMQ_URL", "amqp://commerce:commerce@localhost:5672/"),
+		ZitadelIssuer:                   zitadelIssuer,
+		ZitadelDiscoveryURL:             stringEnv("ZITADEL_DISCOVERY_URL", zitadelIssuer),
+		ZitadelAudience:                 stringEnv("ZITADEL_AUDIENCE", serviceName),
+		CORSAllowedOrigins:              stringSliceEnv("CORS_ALLOWED_ORIGINS", nil),
+		OpenAPIDocsEnabled:              boolEnv("OPENAPI_DOCS_ENABLED", stringEnv("APP_ENV", "development") != "production"),
+		SupplierConsoleRedirectsEnabled: boolEnv("SUPPLIER_CONSOLE_REDIRECTS_ENABLED", false),
+		ShutdownTimeout:                 time.Duration(timeoutSeconds) * time.Second,
+		PlatformDomain:                  stringEnv("PLATFORM_DOMAIN", "matjero.com"),
+		TrustedForwardedHost:            boolEnv("TRUSTED_FORWARDED_HOST", false),
+		ReservedSubdomains:              stringSliceEnv("RESERVED_SUBDOMAINS", []string{"www", "api", "admin", "app", "cdn", "mail", "seller", "supplier", "static", "assets"}),
 
 		CoreAPIBaseURL: stringEnv("CORE_API_BASE_URL", "http://localhost:8080"),
 		CoreAPIToken:   stringEnv("CORE_API_TOKEN", ""),
