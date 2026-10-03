@@ -94,7 +94,15 @@ func run(ctx context.Context) error {
 		RequireAuth:  true,
 		AllowedRoles: []string{auth.RoleSupplierOwner, auth.RoleSupplierManager, auth.RoleSupplierStaff},
 		Register: func(r chi.Router) {
-			supplierapi.RegisterSupplierRoutes(supplierapi.Dependencies{Core: core})(r)
+			deps := supplierapi.Dependencies{Core: core}
+			// Legacy compatibility (Feature 025): redirects are runtime-
+			// controlled server-side and default to legacy behavior.
+			deps.Compatibility = supplierapi.NewConsoleCompatibilityService(core, supplierapi.CompatibilityConfig{
+				RedirectsEnabled: cfg.SupplierConsoleRedirectsEnabled,
+			}, logger)
+			r.Use(supplierapi.UsageMeasurementMiddleware(logger))
+			supplierapi.RegisterSupplierRoutes(deps)(r)
+			supplierapi.RegisterCompatibilityRoutes(deps)(r)
 		},
 	}, core, verifier))
 

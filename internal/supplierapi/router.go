@@ -54,6 +54,10 @@ type CoreCapabilities interface {
 // Dependencies wires the supplier routes.
 type Dependencies struct {
 	Core CoreCapabilities
+	// Compatibility resolves legacy-route console redirect decisions
+	// (Feature 025). Optional: without it the decision endpoint answers 503
+	// and every legacy route serves the legacy application.
+	Compatibility *ConsoleCompatibilityService
 }
 
 func RegisterSupplierRoutes(deps Dependencies) func(r chi.Router) {
