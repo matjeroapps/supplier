@@ -200,6 +200,40 @@ export function App({ initialPath, initialLocale, authClient }: { initialPath?: 
     }
   }, [currentPath, activeAuthClient]);
 
+  // ─── Legacy compatibility decision (Feature 025) ─────────────────────────
+  // The SPA asks the Supplier API for the server-authoritative compatibility
+  // decision after OIDC authentication. The SPA never decides: only a
+  // redirect decision carrying a server-constructed destination navigates
+  // away, and with redirects disabled (the default) the decision is always
+  // "stay". A measurement/decision failure keeps the user on the legacy route.
+  React.useEffect(() => {
+    if (!authState.isAuthenticated || currentPath === '/auth/callback') {
+      return;
+    }
+    let active = true;
+    async function evaluateCompatibility() {
+      try {
+        const response = await api.post('/v1/supplier/console-compatibility', {
+          intent_path: currentPath
+        });
+        if (!active || !response.ok) return;
+        const decision = (await response.json()) as {
+          decision: string;
+          destination?: { path: string };
+        };
+        if (active && decision.decision === 'redirect' && decision.destination?.path) {
+          window.location.assign(decision.destination.path);
+        }
+      } catch {
+        // Decision unavailable: stay on the working legacy route.
+      }
+    }
+    void evaluateCompatibility();
+    return () => {
+      active = false;
+    };
+  }, [authState.isAuthenticated, currentPath, api]);
+
   // ─── Load all data ────────────────────────────────────────────────────────
 
   React.useEffect(() => {
