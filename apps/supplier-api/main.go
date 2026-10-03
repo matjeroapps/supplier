@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 
@@ -88,28 +89,35 @@ func run(ctx context.Context) error {
 		SpecBytes: specBytes,
 	})
 
+	deps := supplierapi.Dependencies{Core: core}
+	// Legacy compatibility (Feature 025): redirects are runtime-controlled
+	// server-side and default to legacy behavior.
+	deps.Compatibility = supplierapi.NewConsoleCompatibilityService(core, supplierapi.CompatibilityConfig{
+		RedirectsEnabled: cfg.SupplierConsoleRedirectsEnabled,
+	}, logger)
+
 	router.Mount("/", actorapi.NewRouter(actorapi.Config{
 		AppName:      "Supplier API",
 		Actor:        "supplier",
 		RequireAuth:  true,
 		AllowedRoles: []string{auth.RoleSupplierOwner, auth.RoleSupplierManager, auth.RoleSupplierStaff},
-		Register: func(r chi.Router) {
-			deps := supplierapi.Dependencies{Core: core}
-			// Legacy compatibility (Feature 025): redirects are runtime-
-			// controlled server-side and default to legacy behavior.
-			deps.Compatibility = supplierapi.NewConsoleCompatibilityService(core, supplierapi.CompatibilityConfig{
-				RedirectsEnabled: cfg.SupplierConsoleRedirectsEnabled,
-			}, logger)
-			// Mounted on a sub-router: middlewares must precede route
-			// registration on a chi mux, and the actor router has already
-			// registered its own routes on r.
-			r.Route("/", func(routes chi.Router) {
-				routes.Use(supplierapi.UsageMeasurementMiddleware(logger))
-				supplierapi.RegisterSupplierRoutes(deps)(routes)
-				supplierapi.RegisterCompatibilityRoutes(deps)(routes)
-			})
-		},
+		Register:     mountSupplierRoutes(deps, logger),
 	}, core, verifier))
 
 	return httpx.Run(ctx, appCfg, logger, router)
+}
+
+// mountSupplierRoutes mounts the Feature 025 Supplier routes and the legacy
+// compatibility endpoint with usage measurement on the actor router. They ride
+// on a child router because the actor router has already registered its own
+// routes when the Register callback runs, and a chi mux requires all
+// middlewares to precede route registration.
+func mountSupplierRoutes(deps supplierapi.Dependencies, logger *slog.Logger) func(chi.Router) {
+	return func(r chi.Router) {
+		r.Route("/", func(routes chi.Router) {
+			routes.Use(supplierapi.UsageMeasurementMiddleware(logger))
+			supplierapi.RegisterSupplierRoutes(deps)(routes)
+			supplierapi.RegisterCompatibilityRoutes(deps)(routes)
+		})
+	}
 }
