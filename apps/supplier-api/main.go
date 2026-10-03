@@ -100,9 +100,14 @@ func run(ctx context.Context) error {
 			deps.Compatibility = supplierapi.NewConsoleCompatibilityService(core, supplierapi.CompatibilityConfig{
 				RedirectsEnabled: cfg.SupplierConsoleRedirectsEnabled,
 			}, logger)
-			r.Use(supplierapi.UsageMeasurementMiddleware(logger))
-			supplierapi.RegisterSupplierRoutes(deps)(r)
-			supplierapi.RegisterCompatibilityRoutes(deps)(r)
+			// Mounted on a sub-router: middlewares must precede route
+			// registration on a chi mux, and the actor router has already
+			// registered its own routes on r.
+			r.Route("/", func(routes chi.Router) {
+				routes.Use(supplierapi.UsageMeasurementMiddleware(logger))
+				supplierapi.RegisterSupplierRoutes(deps)(routes)
+				supplierapi.RegisterCompatibilityRoutes(deps)(routes)
+			})
 		},
 	}, core, verifier))
 
