@@ -210,6 +210,9 @@ export function App({ initialPath, initialLocale, authClient }: { initialPath?: 
     if (!authState.isAuthenticated || currentPath === '/auth/callback') {
       return;
     }
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('legacy') === 'supplier') {
+      return;
+    }
     let active = true;
     async function evaluateCompatibility() {
       try {

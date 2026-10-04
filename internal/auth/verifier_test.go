@@ -90,6 +90,30 @@ func TestOIDCVerifierSplitDiscovery(t *testing.T) {
 	}
 }
 
+func TestOIDCVerifierSplitDiscoveryPreservesIssuerHostPort(t *testing.T) {
+	publicIssuer := "http://public-zitadel.example.com:8181"
+	issuer := newOIDCSplitIssuerWithHostCheck(t, publicIssuer)
+
+	verifier, err := NewOIDCVerifier(context.Background(), Config{
+		IssuerURL:    publicIssuer,
+		DiscoveryURL: issuer.URL,
+		Audience:     "proj-supplier-123",
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCVerifier with split discovery returned error: %v", err)
+	}
+
+	token := signJWT(t, issuer.privateKey, publicIssuer, "proj-supplier-123", map[string]any{
+		"urn:zitadel:iam:org:project:roles": map[string]any{
+			"supplier_owner": map[string]any{"proj-supplier-123": "Matjero"},
+		},
+	})
+
+	if _, err := verifier.Verify(context.Background(), token); err != nil {
+		t.Fatalf("Verify returned error: %v", err)
+	}
+}
+
 func TestOIDCVerifierRejectsWrongIssuer(t *testing.T) {
 	issuer := newOIDCIssuer(t)
 
@@ -238,6 +262,52 @@ func newOIDCSplitIssuer(t *testing.T, publicIssuer string) oidcIssuer {
 		})
 	})
 	mux.HandleFunc("/keys", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"keys": []map[string]any{jwkForRSA(&privateKey.PublicKey, issuer.keyID)},
+		})
+	})
+
+	server := httptest.NewServer(mux)
+	issuer.Server = server
+	t.Cleanup(server.Close)
+
+	return issuer
+}
+
+func newOIDCSplitIssuerWithHostCheck(t *testing.T, publicIssuer string) oidcIssuer {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey returned error: %v", err)
+	}
+	req, err := http.NewRequest(http.MethodGet, publicIssuer, nil)
+	if err != nil {
+		t.Fatalf("parse public issuer: %v", err)
+	}
+	expectedHost := req.URL.Host
+
+	issuer := oidcIssuer{
+		privateKey: privateKey,
+		keyID:      "test-key",
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != expectedHost {
+			http.Error(w, "unexpected host", http.StatusMisdirectedRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"issuer":   publicIssuer,
+			"jwks_uri": issuer.URL + "/keys",
+		})
+	})
+	mux.HandleFunc("/keys", func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != expectedHost {
+			http.Error(w, "unexpected host", http.StatusMisdirectedRequest)
+			return
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"keys": []map[string]any{jwkForRSA(&privateKey.PublicKey, issuer.keyID)},
 		})
