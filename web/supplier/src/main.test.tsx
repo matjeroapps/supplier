@@ -759,6 +759,19 @@ describe('Supplier Portal App Component', () => {
     });
   });
 
+  it('keeps legacy Supplier route when legacy=supplier is present', async () => {
+    window.history.pushState({}, '', '/integrations?legacy=supplier');
+    const fetchMock = setupMockFetch();
+
+    render(<App initialPath="/integrations" initialLocale="en" authClient={createMockAuthClient()} />);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/v1/bootstrap'))).toBe(true);
+    });
+
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/v1/supplier/console-compatibility'))).toBe(false);
+  });
+
   it('clears session when receiving 401 unauthorized response', async () => {
     globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }));
     const mockAuth = createMockAuthClient();
